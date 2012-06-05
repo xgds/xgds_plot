@@ -6,6 +6,15 @@
 
 from django.conf.urls.defaults import url, patterns
 
-urlpatterns = patterns('',
-    url(r'^$', 'views.index', name='index'),
+urlpatterns = patterns(
+    'xgds_plot.views',
+
+    url(r'^meta.json$',
+        'meta', {},
+        name='xgds_plot_meta'),
+
+    url(r'^tile/(?P<datasetCode>[^/]+)/(?P<zoom>\d+)/(?P<index>\d+)\.json$',
+        'tile', {},
+        name='xgds_plot_tile'),
+
 )

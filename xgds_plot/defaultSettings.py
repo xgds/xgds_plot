@@ -4,23 +4,58 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
-"""
-This app may define some new parameters that can be modified in the
-Django settings module.  Let's say one such parameter is FOO.  The
-default value for FOO is defined in this file, like this:
+XGDS_ZMQ_WEB_SOCKET_URL = '{{host}}:8001/zmq'
 
-  FOO = 'my default value'
+# A list of data sets available for plotting.
+XGDS_PLOT_TIME_SERIES = (
 
-If the admin for the site doesn't like the default value, they can
-override it in the site-level settings module, like this:
+    {
+        'code': 'nsRatio',
+        'name': 'Neutron Spectrometer Sn/Cd Ratio',
+        'query': {
+            'type': 'xgds_plot.query.Django',
+            'model': 'isruApp.NSTelemetry',
+            'timestamp': 'timestamp',
+        },
+        'value': {
+            'type': 'xgds_plot.value.Ratio',
+            'fields': ('sn', 'cd'),
+        },
+        'rasterMap': {
+            'type': 'xgds_plot.rasterMap.Basic',
+            'colorRange': [2.9, 3.2],
+        }
+    },
 
-  FOO = 'a better value'
+    {
+        'code': 'nsSn',
+        'name': 'Neutron Spectrometer Sn (counts/s)',
+        'query': {
+            'type': 'django',
+            'model': 'isruApp.NSTelemetry',
+            'timestamp': 'timestamp',
+        },
+        'value': {
+            'type': 'xgds_plot.value.Scalar',
+            'fields': 'sn',
+        },
+        'rasterMap': {
+            'type': 'isruApp.nsRasterMap.NsSnMap',
+            'colorRange': [42, 48],
+        },
+    },
 
-Other modules can access the value of FOO like this:
+    {
+        'code': 'nsCd',
+        'name': 'Neutron Spectrometer Cd (counts/s)',
+        'colorRange': [42, 48],
+    },
 
-  from xgds_plot import settings
-  print settings.FOO
+)
 
-Don't try to get the value of FOO from django.conf.settings.  That
-settings object will not know about the default value!
-"""
+# A list of functions that return meta-data for additional time series.
+# For example, you might specify a function that retrieves a list of
+# available time series from a database table.
+XGDS_PLOT_TIME_SERIES_GENERATORS = (
+    # 'mymodule.myfunction'
+)
