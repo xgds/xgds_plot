@@ -9,6 +9,10 @@ from django.conf.urls.defaults import url, patterns
 urlpatterns = patterns(
     'xgds_plot.views',
 
+    url(r'^plots/$',
+        'plots', {},
+        name='xgds_plot_plots'),
+
     url(r'^meta.json$',
         'meta', {},
         name='xgds_plot_meta'),

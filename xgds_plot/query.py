@@ -29,11 +29,13 @@ class Django(TimeSeriesQuery):
     """
     A TimeSeriesQuery implementation that retrieves data from a Django
     model.
+
+    This is the default implementation we use if the "queryType" parameter
+    is not specified.
     """
     def __init__(self, meta):
-        self.meta = meta
-        self.model = getModelByName(meta.model)
-        self.timestampField = meta.timestamp
+        self.model = getModelByName(meta['queryModel'])
+        self.timestampField = meta['queryTimestampField']
 
     def getData(minTime=None, maxTime=None):
         filterKwargs = {}
