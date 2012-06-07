@@ -4,7 +4,7 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
-XGDS_ZMQ_WEB_SOCKET_URL = '{{host}}:8001/zmq'
+XGDS_ZMQ_WEB_SOCKET_URL = 'ws://{{host}}:8001/zmq/'
 
 # A list of data sets available for plotting.
 XGDS_PLOT_TIME_SERIES = ()
