@@ -12,21 +12,6 @@ var SIGMA = 15;
 var KERNEL_WIDTH = SIGMA * 4;
 var HALF_KERNEL_WIDTH = Math.floor(KERNEL_WIDTH / 2.0);
 
-var BLACK_COLORS = {
-    raw: '#ccc',
-    smooth: '#000'
-}
-
-var BLUE_COLORS = {
-    raw: '#bbf',
-    smooth: '#00a'
-}
-
-var GREEN_COLORS = {
-    raw: '#9d9',
-    smooth: '#0a0'
-}
-
 var ratioData;
 var snData;
 var cdData;
@@ -95,18 +80,8 @@ function dataSetAdd(data, t, y) {
     }
 }
 
-function dataSetGetPlotData(data, colors, yred) {
-    smoothData = {data: data.smooth, color: colors.smooth};
-    if (yred != undefined) {
-        setYRedLine(smoothData, yred);
-    }
-    return [
-        {
-            data: data.raw,
-            color: colors.raw
-        },
-        smoothData
-    ];
+function dataSetGetPlotData(data) {
+    return [{data: data.raw}, {data: data.smooth}];
 }
 
 /**********************************************************************/
@@ -134,8 +109,8 @@ function ratioDataSetAdd(data, t, ynum, ydenom) {
     }
 }
 
-function ratioDataSetGetPlotData(data, color, yred) {
-    return dataSetGetPlotData(data, color, yred);
+function ratioDataSetGetPlotData(data) {
+    return dataSetGetPlotData(data);
 }
 
 /**********************************************************************/
@@ -196,7 +171,29 @@ function setYRedLine(seriesOpts, yred) {
     });
 }
 
+var plotStyles = null;
+
+function makePlotStyles() {
+    return [
+        {
+            data: function () { return ratioDataSetGetPlotData(ratioData); }
+        },
+
+        {
+            data: function () { return dataSetGetPlotData(snData); }
+        },
+
+        {
+            data: function () { return dataSetGetPlotData(cdData); }
+        }
+    ];
+}
+
 function plot() {
+    if (plotStyles == null) {
+        plotStyles = makePlotStyles();
+    }
+
     if (ratioData.length < 2) {
         return; // not ready yet
     }
@@ -204,39 +201,31 @@ function plot() {
         return; // nothing to do
     }
 
-    var opts1 = getPlotOpts({
+    var defaultOpts = {
+        xaxis: {
+            mode: 'time'
+        },
         yaxis: {
-            min: 0,
-            max: 6
-        }
-    });
-    turnOffXTicks(opts1);
-    setYRedBackground(opts1, 3.2);
-    $.plot($('#plot_0'),
-           ratioDataSetGetPlotData(ratioData, BLACK_COLORS, 3.2),
-           opts1);
+            labelWidth: 20
+        },
+        grid: {
+            hoverable: true,
+            clickable: true
+        },
+        shadowSize: 0
+    };
 
-
-    var opts2 = getPlotOpts({
-        yaxis: {
-            min: 0,
-            max: 80
-        }
+    $.each(plotStyles, function (i, meta) {
+        var opts = $.extend(true, {}, defaultOpts, masterMeta[i].plotOpts);
+        var data = meta.data();
+        var raw = data[0];
+        var smooth = data[1];
+        var styledRaw = $.extend(true, {}, raw, masterMeta[i].seriesOpts);
+        var styledSmooth = $.extend(true, {}, smooth, masterMeta[i].smoothing.seriesOpts);
+        $.plot($('#plot_' + i),
+               [styledRaw, styledSmooth],
+               opts);
     });
-    setYRedBackground(opts2, 48);
-    $.plot($('#plot_1'),
-           dataSetGetPlotData(snData, GREEN_COLORS, 48),
-           opts2);
-
-    var opts3 = getPlotOpts({
-        yaxis: {
-            min: 0,
-            max: 80
-        }
-    });
-    $.plot($('#plot_2'),
-           dataSetGetPlotData(cdData, BLUE_COLORS),
-           opts3);
 
     newData = false;
 }
@@ -302,14 +291,11 @@ function handleMasterMeta(inMeta) {
     var plotsHtml = [];
     $.each(masterMeta, function (i, plot) {
         var style;
-        /*
         if (plot.show) {
             style = '';
         } else {
             style = 'style="display: none"';
         }
-        */
-        style = '';
         plotsHtml.push('<div ' + style + '>'
                        + '<div id="plotLabel_' + i + '">' + plot.valueName + '</div>'
                        + '<div id="plot_' + i + '" class="flotPlot"></div>'
