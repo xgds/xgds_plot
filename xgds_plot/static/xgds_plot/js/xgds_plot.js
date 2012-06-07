@@ -20,6 +20,31 @@ var newData = true;
 
 var sock = null;
 
+function parseIso8601(string) {
+    var regexp = "([0-9]{4})(-([0-9]{2})(-([0-9]{2})" +
+        "(T([0-9]{2}):([0-9]{2})(:([0-9]{2})(\.([0-9]+))?)?" +
+        "(Z|(([-+])([0-9]{2}):([0-9]{2})))?)?)?)?";
+    var d = string.match(new RegExp(regexp));
+
+    var offset = 0;
+    var date = new Date(d[1], 0, 1);
+
+    if (d[3]) { date.setMonth(d[3] - 1); }
+    if (d[5]) { date.setDate(d[5]); }
+    if (d[7]) { date.setHours(d[7]); }
+    if (d[8]) { date.setMinutes(d[8]); }
+    if (d[10]) { date.setSeconds(d[10]); }
+    if (d[12]) { date.setMilliseconds(Number("0." + d[12]) * 1000); }
+    if (d[14]) {
+        offset = (Number(d[16]) * 60) + Number(d[17]);
+        offset *= ((d[15] == '-') ? 1 : -1);
+    }
+
+    offset -= date.getTimezoneOffset();
+    time = (Number(date) + (offset * 60 * 1000));
+    return Number(time);
+}
+
 function pushTruncate(arr, vals, n) {
     if (arr.length >= n-1) {
         arr.splice(0, 1);
@@ -62,12 +87,22 @@ function getLastKSamples(arr, k) {
 
 /**********************************************************************/
 
-function DataSet() {
+function ScalarTimeSeries(meta) {
+    this.meta = $.extend(true, {}, meta);
     this.raw = [];
     this.smooth = [];
 }
 
-DataSet.prototype.add = function (t, y) {
+ScalarTimeSeries.prototype.getValue = function (rec) {
+    return [parseIso8601(rec[this.meta.queryTimestampField]),
+            rec[this.meta.valueField]];
+}
+
+ScalarTimeSeries.prototype.add = function (rec) {
+    var ty = this.getValue(rec);
+    var t = ty[0];
+    var y = ty[1];
+
     pushTruncate(this.raw, [t, y], MAX_NUM_DATA_POINTS);
 
     if (this.raw.length > KERNEL_WIDTH) {
@@ -81,20 +116,32 @@ DataSet.prototype.add = function (t, y) {
     }
 }
 
-DataSet.prototype.getPlotData = function () {
+ScalarTimeSeries.prototype.getPlotData = function () {
     return [{data: this.raw}, {data: this.smooth}];
 }
 
 /**********************************************************************/
 
-function RatioDataSet() {
+function RatioTimeSeries(meta) {
+    this.meta = $.extend(true, {}, meta);
     this.raw = [];
     this.smooth = [];
     this.numerator = [];
     this.denominator = [];
 }
 
-RatioDataSet.prototype.add = function (t, ynum, ydenom) {
+RatioTimeSeries.prototype.getValue = function (rec) {
+    return [parseIso8601(rec[this.meta.queryTimestampField]),
+            rec[this.meta.valueFields[0]],
+            rec[this.meta.valueFields[1]]];
+}
+
+RatioTimeSeries.prototype.add = function (rec) {
+    var tnd = this.getValue(rec);
+    var t = tnd[0];
+    var ynum = tnd[1];
+    var ydenom = tnd[2];
+
     pushTruncate(this.numerator, [t, ynum], MAX_NUM_DATA_POINTS);
     pushTruncate(this.denominator, [t, ydenom], MAX_NUM_DATA_POINTS);
     pushTruncate(this.raw, [t, ynum/ydenom], MAX_NUM_DATA_POINTS);
@@ -113,7 +160,7 @@ RatioDataSet.prototype.add = function (t, ynum, ydenom) {
     }
 }
 
-RatioDataSet.prototype.getPlotData = DataSet.prototype.getPlotData;
+RatioTimeSeries.prototype.getPlotData = ScalarTimeSeries.prototype.getPlotData;
 
 /**********************************************************************/
 
@@ -184,7 +231,7 @@ function setupPlotHandlers(plotId) {
 
 function onopen(zmq) {
     $('#socketStatus').html('connected');
-    zmq.subscribeJson('isruApp.ddsnstier1data:', handleNsData);
+    zmq.subscribeJson('isruApp.resolvenstier1data:', handleNsData);
 }
 
 function onclose(zmq) {
@@ -193,10 +240,9 @@ function onclose(zmq) {
 
 function handleNsData (zmq, topic, obj) {
     var fields = obj.data.fields;
-    timestamp = obj.timestamp / 1000;
-    ratioData.add(timestamp, fields.snScalar, fields.cdScalar);
-    snData.add(timestamp, fields.snScalar);
-    cdData.add(timestamp, fields.cdScalar);
+    ratioData.add(obj.data.fields);
+    snData.add(obj.data.fields);
+    cdData.add(obj.data.fields);
     newData = true;
 }
 
@@ -238,9 +284,9 @@ function handleMasterMeta(inMeta) {
     $("#plots").html(plotsHtml.join(""));
 
     kernel = gaussianKernel(SIGMA, KERNEL_WIDTH);
-    ratioData = new RatioDataSet();
-    snData = new DataSet();
-    cdData = new DataSet();
+    ratioData = new RatioTimeSeries(masterMeta[0]);
+    snData = new ScalarTimeSeries(masterMeta[1]);
+    cdData = new ScalarTimeSeries(masterMeta[2]);
     setupPlotHandlers('ratioPlot');
     setupPlotHandlers('snPlot');
 
