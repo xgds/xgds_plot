@@ -62,137 +62,68 @@ function getLastKSamples(arr, k) {
 
 /**********************************************************************/
 
-function dataSetCreate() {
-    return {raw: [], smooth: []};
+function DataSet() {
+    this.raw = [];
+    this.smooth = [];
 }
 
-function dataSetAdd(data, t, y) {
-    pushTruncate(data.raw, [t, y], MAX_NUM_DATA_POINTS);
+DataSet.prototype.add = function (t, y) {
+    pushTruncate(this.raw, [t, y], MAX_NUM_DATA_POINTS);
 
-    if (data.raw.length > KERNEL_WIDTH) {
+    if (this.raw.length > KERNEL_WIDTH) {
         var ysmooth = dotProduct(kernel,
-                                 getLastKSamples(data.raw, KERNEL_WIDTH));
+                                 getLastKSamples(this.raw, KERNEL_WIDTH));
 
-        var mid = data.raw.length - HALF_KERNEL_WIDTH;
-        var tmid = data.raw[mid][0];
-        pushTruncate(data.smooth, [tmid, ysmooth],
+        var mid = this.raw.length - HALF_KERNEL_WIDTH;
+        var tmid = this.raw[mid][0];
+        pushTruncate(this.smooth, [tmid, ysmooth],
                      MAX_NUM_DATA_POINTS - HALF_KERNEL_WIDTH + 1);
     }
 }
 
-function dataSetGetPlotData(data) {
-    return [{data: data.raw}, {data: data.smooth}];
+DataSet.prototype.getPlotData = function () {
+    return [{data: this.raw}, {data: this.smooth}];
 }
 
 /**********************************************************************/
 
-function ratioDataSetCreate() {
-    return {raw: [], smooth: [], numerator: [], denominator: []};
+function RatioDataSet() {
+    this.raw = [];
+    this.smooth = [];
+    this.numerator = [];
+    this.denominator = [];
 }
 
-function ratioDataSetAdd(data, t, ynum, ydenom) {
-    pushTruncate(data.numerator, [t, ynum], MAX_NUM_DATA_POINTS);
-    pushTruncate(data.denominator, [t, ydenom], MAX_NUM_DATA_POINTS);
-    pushTruncate(data.raw, [t, ynum/ydenom], MAX_NUM_DATA_POINTS);
+RatioDataSet.prototype.add = function (t, ynum, ydenom) {
+    pushTruncate(this.numerator, [t, ynum], MAX_NUM_DATA_POINTS);
+    pushTruncate(this.denominator, [t, ydenom], MAX_NUM_DATA_POINTS);
+    pushTruncate(this.raw, [t, ynum/ydenom], MAX_NUM_DATA_POINTS);
 
-    if (data.raw.length > KERNEL_WIDTH) {
+    if (this.raw.length > KERNEL_WIDTH) {
         var numSmooth = dotProduct(kernel,
-                                   getLastKSamples(data.numerator, KERNEL_WIDTH));
+                                   getLastKSamples(this.numerator, KERNEL_WIDTH));
         var denomSmooth = dotProduct(kernel,
-                                     getLastKSamples(data.denominator, KERNEL_WIDTH));
+                                     getLastKSamples(this.denominator, KERNEL_WIDTH));
 
-        var mid = data.raw.length - HALF_KERNEL_WIDTH;
-        var tmid = data.raw[mid][0];
+        var mid = this.raw.length - HALF_KERNEL_WIDTH;
+        var tmid = this.raw[mid][0];
 
-        pushTruncate(data.smooth, [tmid, numSmooth / denomSmooth],
+        pushTruncate(this.smooth, [tmid, numSmooth / denomSmooth],
                      MAX_NUM_DATA_POINTS - HALF_KERNEL_WIDTH + 1);
     }
 }
 
-function ratioDataSetGetPlotData(data) {
-    return dataSetGetPlotData(data);
-}
+RatioDataSet.prototype.getPlotData = DataSet.prototype.getPlotData;
 
 /**********************************************************************/
-
-function getPlotOpts(extraOpts) {
-    var opts = {
-        xaxis: {
-            mode: 'time'
-        },
-        yaxis: {
-            labelWidth: 20
-        },
-        grid: {
-            hoverable: true,
-            clickable: true
-        },
-        shadowSize: 0
-    };
-    if (extraOpts != undefined) {
-        $.extend(true, opts, extraOpts);
-    }
-    return opts;
-}
-
-function turnOffXTicks(opts) {
-    $.extend(true, opts, {
-        xaxis: {
-            labelHeight: 0,
-            tickFormatter: function () { return " "; }
-        }
-    });
-}
-
-function setYRedBackground(opts, threshold) {
-    $.extend(true, opts, {
-        grid: {
-            markings: [
-                {
-                    yaxis: {
-                        from: threshold,
-                        to: 9999
-                    },
-                    color: "#fdd"
-                }
-            ]
-        }
-    });
-}
-
-function setYRedLine(seriesOpts, yred) {
-    var normalColor = seriesOpts.color;
-    $.extend(true, seriesOpts, {
-        color: '#f00',
-        threshold: {
-            below: yred,
-            color: normalColor
-        }
-    });
-}
-
-var plotStyles = null;
-
-function makePlotStyles() {
-    return [
-        {
-            data: function () { return ratioDataSetGetPlotData(ratioData); }
-        },
-
-        {
-            data: function () { return dataSetGetPlotData(snData); }
-        },
-
-        {
-            data: function () { return dataSetGetPlotData(cdData); }
-        }
-    ];
-}
 
 function plot() {
-    if (plotStyles == null) {
-        plotStyles = makePlotStyles();
-    }
+    // FIX: don't hard code
+    var dataFuncs = [
+        function () { return ratioData.getPlotData(); },
+        function () { return snData.getPlotData(); },
+        function () { return cdData.getPlotData(); }
+    ];
 
     if (ratioData.length < 2) {
         return; // not ready yet
@@ -215,16 +146,18 @@ function plot() {
         shadowSize: 0
     };
 
-    $.each(plotStyles, function (i, meta) {
-        var opts = $.extend(true, {}, defaultOpts, masterMeta[i].plotOpts);
-        var data = meta.data();
+    $.each(dataFuncs, function (i, dataFunc) {
+        var meta = masterMeta[i];
+        var opts = $.extend(true, {}, defaultOpts, meta.plotOpts);
+        var data = dataFunc();
         var raw = data[0];
         var smooth = data[1];
-        var styledRaw = $.extend(true, {}, raw, masterMeta[i].seriesOpts);
-        var styledSmooth = $.extend(true, {}, smooth, masterMeta[i].smoothing.seriesOpts);
-        $.plot($('#plot_' + i),
-               [styledRaw, styledSmooth],
-               opts);
+        //console.log(i + ' ' + raw.data.length);
+        var styledRaw = $.extend(true, {}, raw, meta.seriesOpts);
+        var styledSmooth = $.extend(true, {}, smooth, meta.smoothing.seriesOpts);
+        plots[i] = $.plot($('#plot_' + i),
+                          [styledRaw, styledSmooth],
+                          opts);
     });
 
     newData = false;
@@ -261,9 +194,9 @@ function onclose(zmq) {
 function handleNsData (zmq, topic, obj) {
     var fields = obj.data.fields;
     timestamp = obj.timestamp / 1000;
-    ratioDataSetAdd(ratioData, timestamp, fields.snScalar, fields.cdScalar);
-    dataSetAdd(snData, timestamp, fields.snScalar);
-    dataSetAdd(cdData, timestamp, fields.cdScalar);
+    ratioData.add(timestamp, fields.snScalar, fields.cdScalar);
+    snData.add(timestamp, fields.snScalar);
+    cdData.add(timestamp, fields.cdScalar);
     newData = true;
 }
 
@@ -305,9 +238,9 @@ function handleMasterMeta(inMeta) {
     $("#plots").html(plotsHtml.join(""));
 
     kernel = gaussianKernel(SIGMA, KERNEL_WIDTH);
-    ratioData = ratioDataSetCreate();
-    snData = dataSetCreate();
-    cdData = dataSetCreate();
+    ratioData = new RatioDataSet();
+    snData = new DataSet();
+    cdData = new DataSet();
     setupPlotHandlers('ratioPlot');
     setupPlotHandlers('snPlot');
 
