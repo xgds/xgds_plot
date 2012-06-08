@@ -12,9 +12,7 @@ var SIGMA = 15;
 var KERNEL_WIDTH = SIGMA * 4;
 var HALF_KERNEL_WIDTH = Math.floor(KERNEL_WIDTH / 2.0);
 
-var ratioData;
-var snData;
-var cdData;
+var timeSeries = [];
 var kernel;
 var newData = true;
 
@@ -167,12 +165,12 @@ RatioTimeSeries.prototype.getPlotData = ScalarTimeSeries.prototype.getPlotData;
 function plot() {
     // FIX: don't hard code
     var dataFuncs = [
-        function () { return ratioData.getPlotData(); },
-        function () { return snData.getPlotData(); },
-        function () { return cdData.getPlotData(); }
+        function () { return timeSeries[0].getPlotData(); },
+        function () { return timeSeries[1].getPlotData(); },
+        function () { return timeSeries[2].getPlotData(); }
     ];
 
-    if (ratioData.length < 2) {
+    if (timeSeries[0].length < 2) {
         return; // not ready yet
     }
     if (!newData) {
@@ -240,9 +238,9 @@ function onclose(zmq) {
 
 function handleNsData (zmq, topic, obj) {
     var fields = obj.data.fields;
-    ratioData.add(obj.data.fields);
-    snData.add(obj.data.fields);
-    cdData.add(obj.data.fields);
+    $.each(masterMeta, function (i, meta) {
+        timeSeries[i].add(obj.data.fields);
+    });
     newData = true;
 }
 
@@ -276,7 +274,10 @@ function handleMasterMeta(inMeta) {
             style = 'style="display: none"';
         }
         plotsHtml.push('<div ' + style + '>'
-                       + '<div id="plotLabel_' + i + '">' + plot.valueName + '</div>'
+                       + '<div id="plotLabel_' + i + '">'
+                       + plot.valueName
+                       + '<span class="plotInfo" id="plot_' + i + '_info"></span>'
+                       + '</div>'
                        + '<div id="plot_' + i + '" class="flotPlot"></div>'
                        + '</div>');
         plots.push(null);
@@ -284,11 +285,15 @@ function handleMasterMeta(inMeta) {
     $("#plots").html(plotsHtml.join(""));
 
     kernel = gaussianKernel(SIGMA, KERNEL_WIDTH);
-    ratioData = new RatioTimeSeries(masterMeta[0]);
-    snData = new ScalarTimeSeries(masterMeta[1]);
-    cdData = new ScalarTimeSeries(masterMeta[2]);
-    setupPlotHandlers('ratioPlot');
-    setupPlotHandlers('snPlot');
+    var timeSeriesTypeRegistry = {
+        'xgds_plot.value.Ratio': RatioTimeSeries,
+        'xgds_plot.value.Scalar': ScalarTimeSeries
+    };
+    $.each(masterMeta, function (i, meta) {
+        var timeSeriesType = timeSeriesTypeRegistry[meta.valueType];
+        timeSeries[i] = new timeSeriesType(meta);
+        setupPlotHandlers('plot_' + i);
+    });
 
     var zmqUrl = settings
         .XGDS_ZMQ_WEB_SOCKET_URL
