@@ -8,13 +8,24 @@ var MAX_NUM_DATA_POINTS = 500;
 var SIGMA = 15;
 var KERNEL_WIDTH = SIGMA * 4;
 var HALF_KERNEL_WIDTH = Math.floor(KERNEL_WIDTH / 2.0);
+var DEFAULT_PLOT_OPTS = {
+    xaxis: {
+        mode: 'time'
+    },
+    yaxis: {
+        labelWidth: 20
+    },
+    grid: {
+        hoverable: true,
+            clickable: true
+    },
+    shadowSize: 0
+};
 
 var masterMetaG;
 var plotsG = [];
-var timeSeriesG = [];
 var kernelG;
 var haveNewDataG = true;
-var showPlotsG = [];
 
 function parseIso8601(string) {
     var regexp = "([0-9]{4})(-([0-9]{2})(-([0-9]{2})" +
@@ -160,61 +171,52 @@ RatioTimeSeries.prototype.getPlotData = ScalarTimeSeries.prototype.getPlotData;
 
 /**********************************************************************/
 
-function plot() {
-    if (timeSeriesG[0].length < 2) {
-        return; // not ready yet
-    }
+function updatePlots() {
     if (!haveNewDataG) {
         return; // nothing to do
     }
 
-    var defaultOpts = {
-        xaxis: {
-            mode: 'time'
-        },
-        yaxis: {
-            labelWidth: 20
-        },
-        grid: {
-            hoverable: true,
-            clickable: true
-        },
-        shadowSize: 0
-    };
-
-    $.each(masterMetaG, function (i, meta) {
-        var meta = masterMetaG[i];
-        var opts = $.extend(true, {}, defaultOpts, meta.plotOpts);
-        var data = timeSeriesG[i].getPlotData();
-        var raw = data[0];
-        var smooth = data[1];
-        var styledRaw = $.extend(true, {}, raw, meta.seriesOpts);
-        var styledSmooth = $.extend(true, {}, smooth, meta.smoothing.seriesOpts);
-        plotsG[i] = $.plot($('#plot_' + i),
-                           [styledRaw, styledSmooth],
-                           opts);
+    $.each(plotsG, function (i, info) {
+        updatePlot(info);
     });
 
     haveNewDataG = false;
 }
 
-function periodicPlot() {
-    plot();
-    setTimeout(periodicPlot, 200);
+function updatePlot(info) {
+    if (!info.show) return;
+
+    var opts = $.extend(true, {}, DEFAULT_PLOT_OPTS, info.meta.plotOpts);
+    var data = info.timeSeries.getPlotData();
+    var raw = data[0];
+    var smooth = data[1];
+    var styledRaw = $.extend(true, {}, raw, info.meta.seriesOpts);
+    var styledSmooth = $.extend(true, {}, smooth, info.meta.smoothing.seriesOpts);
+    var plot = $.plot(info.plotDiv,
+                      [styledRaw, styledSmooth],
+                      opts);
+    info.plot = plot;
 }
 
-function setupPlotHandlers(plotId) {
-    var plotDiv = $('#' + plotId);
-    var infoDiv = $('#' + plotId + '_info');
-    plotDiv.bind('plothover', function (event, pos, item) {
-        if (item) {
-            var pt = item.datapoint;
-            var t = $.plot.formatDate(new Date(pt[0]), '%H:%M:%S');
-            var y = pt[1].toFixed(3);
-            infoDiv.html('<span style="padding-right: 10px; color: #888;">' + t + '</span>'
-                         + '<span style="font-weight: bold;">' + y + '</span>');
-        }
-    });
+function periodicUpdatePlots() {
+    updatePlots();
+    setTimeout(periodicUpdatePlots, 200);
+}
+
+function setupPlotHandlers(info) {
+    info.plotDiv
+        .bind('plothover', function (event, pos, item) {
+            if (item) {
+                var pt = item.datapoint;
+                var t = $.plot.formatDate(new Date(pt[0]), '%H:%M:%S');
+                var y = pt[1].toFixed(3);
+                info.infoDiv
+                    .html('<span style="padding-right: 10px; color: #888;">'
+                          + t + '</span>'
+                          + '<span style="font-weight: bold;">' + y + '</span>');
+            }
+
+        });
 }
 
 function onopen(zmq) {
@@ -228,8 +230,8 @@ function onclose(zmq) {
 
 function handleNsData (zmq, topic, obj) {
     var fields = obj.data.fields;
-    $.each(masterMetaG, function (i, meta) {
-        timeSeriesG[i].add(obj.data.fields);
+    $.each(plotsG, function (i, info) {
+        info.timeSeries.add(obj.data.fields);
     });
     haveNewDataG = true;
 }
@@ -239,9 +241,9 @@ function handleMasterMeta(inMeta) {
 
     // create show/hide controls for each plot
     var plotControlsHtml = [];
-    $.each(masterMetaG, function (i, plot) {
+    $.each(masterMetaG, function (i, meta) {
         var checked;
-        if (plot.show) {
+        if (meta.show) {
             checked = 'checked="checked" ';
         } else {
             checked = '';
@@ -250,40 +252,51 @@ function handleMasterMeta(inMeta) {
             .push('<div class="plotControl">'
                   + '<input type="checkbox" ' + checked + 'id="showPlot_' + i + '"></input>'
                   + '<label for="showPlot_' + i + '">'
-                  + plot.valueName + '</label></div>');
+                  + meta.valueName + '</label></div>');
     });
     $('#plotControls').html(plotControlsHtml.join(""));
 
-    // create a div and an entry in the plotsG array for each plot
+    // create a div for each plot
     var plotsHtml = [];
-    $.each(masterMetaG, function (i, plot) {
+    $.each(masterMetaG, function (i, meta) {
         var style;
-        if (plot.show) {
+        if (meta.show) {
             style = '';
         } else {
             style = 'style="display: none"';
         }
-        plotsHtml.push('<div ' + style + '>'
+        plotsHtml.push('<div id="plotContainer_' + i + '"' + style + '>'
                        + '<div id="plotLabel_' + i + '">'
-                       + plot.valueName
-                       + '<span class="plotInfo" id="plot_' + i + '_info"></span>'
+                       + meta.valueName
+                       + '<span class="plotInfo" id="plotInfo_' + i + '"></span>'
                        + '</div>'
                        + '<div id="plot_' + i + '" class="flotPlot"></div>'
                        + '</div>');
-        plotsG.push(null);
     });
     $("#plots").html(plotsHtml.join(""));
 
-    kernelG = gaussianKernel(SIGMA, KERNEL_WIDTH);
     var timeSeriesTypeRegistry = {
         'xgds_plot.value.Ratio': RatioTimeSeries,
         'xgds_plot.value.Scalar': ScalarTimeSeries
     };
+
+    // initialize the plotsG array
     $.each(masterMetaG, function (i, meta) {
         var timeSeriesType = timeSeriesTypeRegistry[meta.valueType];
-        timeSeriesG[i] = new timeSeriesType(meta);
-        setupPlotHandlers('plot_' + i);
+        var timeSeries = new timeSeriesType(meta);
+        var info = {index: i,
+                    meta: meta,
+                    plotDiv: $('#plot_' + i),
+                    containerDiv: $('#plotContainer_' + i),
+                    infoDiv: $('#plotInfo_' + i),
+                    show: meta.show,
+                    timeSeries: timeSeries,
+                    plot: null}
+        plotsG.push(info);
+        setupPlotHandlers(info);
     });
+
+    kernelG = gaussianKernel(SIGMA, KERNEL_WIDTH);
 
     var zmqUrl = settings
         .XGDS_ZMQ_WEB_SOCKET_URL
@@ -294,7 +307,7 @@ function handleMasterMeta(inMeta) {
                               autoReconnect: true});
     zmq.start();
 
-    periodicPlot();
+    periodicUpdatePlots();
 }
 
 $(function () {
