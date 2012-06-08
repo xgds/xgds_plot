@@ -4,19 +4,17 @@
 // All Rights Reserved.
 // __END_LICENSE__
 
-var masterMeta;
-var plots = [];
-
 var MAX_NUM_DATA_POINTS = 500;
 var SIGMA = 15;
 var KERNEL_WIDTH = SIGMA * 4;
 var HALF_KERNEL_WIDTH = Math.floor(KERNEL_WIDTH / 2.0);
 
-var timeSeries = [];
-var kernel;
-var newData = true;
-
-var sock = null;
+var masterMetaG;
+var plotsG = [];
+var timeSeriesG = [];
+var kernelG;
+var haveNewDataG = true;
+var showPlotsG = [];
 
 function parseIso8601(string) {
     var regexp = "([0-9]{4})(-([0-9]{2})(-([0-9]{2})" +
@@ -104,7 +102,7 @@ ScalarTimeSeries.prototype.add = function (rec) {
     pushTruncate(this.raw, [t, y], MAX_NUM_DATA_POINTS);
 
     if (this.raw.length > KERNEL_WIDTH) {
-        var ysmooth = dotProduct(kernel,
+        var ysmooth = dotProduct(kernelG,
                                  getLastKSamples(this.raw, KERNEL_WIDTH));
 
         var mid = this.raw.length - HALF_KERNEL_WIDTH;
@@ -145,9 +143,9 @@ RatioTimeSeries.prototype.add = function (rec) {
     pushTruncate(this.raw, [t, ynum/ydenom], MAX_NUM_DATA_POINTS);
 
     if (this.raw.length > KERNEL_WIDTH) {
-        var numSmooth = dotProduct(kernel,
+        var numSmooth = dotProduct(kernelG,
                                    getLastKSamples(this.numerator, KERNEL_WIDTH));
-        var denomSmooth = dotProduct(kernel,
+        var denomSmooth = dotProduct(kernelG,
                                      getLastKSamples(this.denominator, KERNEL_WIDTH));
 
         var mid = this.raw.length - HALF_KERNEL_WIDTH;
@@ -163,17 +161,10 @@ RatioTimeSeries.prototype.getPlotData = ScalarTimeSeries.prototype.getPlotData;
 /**********************************************************************/
 
 function plot() {
-    // FIX: don't hard code
-    var dataFuncs = [
-        function () { return timeSeries[0].getPlotData(); },
-        function () { return timeSeries[1].getPlotData(); },
-        function () { return timeSeries[2].getPlotData(); }
-    ];
-
-    if (timeSeries[0].length < 2) {
+    if (timeSeriesG[0].length < 2) {
         return; // not ready yet
     }
-    if (!newData) {
+    if (!haveNewDataG) {
         return; // nothing to do
     }
 
@@ -191,21 +182,20 @@ function plot() {
         shadowSize: 0
     };
 
-    $.each(dataFuncs, function (i, dataFunc) {
-        var meta = masterMeta[i];
+    $.each(masterMetaG, function (i, meta) {
+        var meta = masterMetaG[i];
         var opts = $.extend(true, {}, defaultOpts, meta.plotOpts);
-        var data = dataFunc();
+        var data = timeSeriesG[i].getPlotData();
         var raw = data[0];
         var smooth = data[1];
-        //console.log(i + ' ' + raw.data.length);
         var styledRaw = $.extend(true, {}, raw, meta.seriesOpts);
         var styledSmooth = $.extend(true, {}, smooth, meta.smoothing.seriesOpts);
-        plots[i] = $.plot($('#plot_' + i),
-                          [styledRaw, styledSmooth],
-                          opts);
+        plotsG[i] = $.plot($('#plot_' + i),
+                           [styledRaw, styledSmooth],
+                           opts);
     });
 
-    newData = false;
+    haveNewDataG = false;
 }
 
 function periodicPlot() {
@@ -238,18 +228,18 @@ function onclose(zmq) {
 
 function handleNsData (zmq, topic, obj) {
     var fields = obj.data.fields;
-    $.each(masterMeta, function (i, meta) {
-        timeSeries[i].add(obj.data.fields);
+    $.each(masterMetaG, function (i, meta) {
+        timeSeriesG[i].add(obj.data.fields);
     });
-    newData = true;
+    haveNewDataG = true;
 }
 
 function handleMasterMeta(inMeta) {
-    masterMeta = inMeta;
+    masterMetaG = inMeta;
 
     // create show/hide controls for each plot
     var plotControlsHtml = [];
-    $.each(masterMeta, function (i, plot) {
+    $.each(masterMetaG, function (i, plot) {
         var checked;
         if (plot.show) {
             checked = 'checked="checked" ';
@@ -264,9 +254,9 @@ function handleMasterMeta(inMeta) {
     });
     $('#plotControls').html(plotControlsHtml.join(""));
 
-    // create a div and an entry in the plots array for each plot
+    // create a div and an entry in the plotsG array for each plot
     var plotsHtml = [];
-    $.each(masterMeta, function (i, plot) {
+    $.each(masterMetaG, function (i, plot) {
         var style;
         if (plot.show) {
             style = '';
@@ -280,18 +270,18 @@ function handleMasterMeta(inMeta) {
                        + '</div>'
                        + '<div id="plot_' + i + '" class="flotPlot"></div>'
                        + '</div>');
-        plots.push(null);
+        plotsG.push(null);
     });
     $("#plots").html(plotsHtml.join(""));
 
-    kernel = gaussianKernel(SIGMA, KERNEL_WIDTH);
+    kernelG = gaussianKernel(SIGMA, KERNEL_WIDTH);
     var timeSeriesTypeRegistry = {
         'xgds_plot.value.Ratio': RatioTimeSeries,
         'xgds_plot.value.Scalar': ScalarTimeSeries
     };
-    $.each(masterMeta, function (i, meta) {
+    $.each(masterMetaG, function (i, meta) {
         var timeSeriesType = timeSeriesTypeRegistry[meta.valueType];
-        timeSeries[i] = new timeSeriesType(meta);
+        timeSeriesG[i] = new timeSeriesType(meta);
         setupPlotHandlers('plot_' + i);
     });
 
