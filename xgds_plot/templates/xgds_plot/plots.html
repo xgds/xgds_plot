@@ -84,6 +84,14 @@
   settings = {{ settings|safe }};
 {% endblock %}
 
+{% block jsInit %}
+  {{ block.super }}
+
+  $(function () {
+      xgds_plot.init();
+  });
+{% endblock jsInit %}
+
 {% block contents %}						
   <table class="bodyTable"><tr>
   <td class="mainPanel">
