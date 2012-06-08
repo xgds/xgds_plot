@@ -5,10 +5,7 @@
 // __END_LICENSE__
 
 var MAX_NUM_DATA_POINTS = 500;
-var SIGMA = 15;
-var KERNEL_WIDTH = SIGMA * 4;
-var HALF_KERNEL_WIDTH = Math.floor(KERNEL_WIDTH / 2.0);
-var DEFAULT_PLOT_OPTS = {
+var BASE_PLOT_OPTS = {
     xaxis: {
         mode: 'time'
     },
@@ -24,7 +21,6 @@ var DEFAULT_PLOT_OPTS = {
 
 var masterMetaG;
 var plotsG = [];
-var kernelG;
 var haveNewDataG = true;
 
 function parseIso8601(string) {
@@ -69,10 +65,11 @@ function dotProduct(u, v) {
 }
 
 function gaussianKernel(sigma, k) {
+    var halfK = Math.floor(0.5 * k);
     var ret = new Array(k);
     var sum = 0;
     for (var i=0; i < k; i++) {
-        var x = (i - HALF_KERNEL_WIDTH) / sigma;
+        var x = (i - halfK) / sigma;
         var y = Math.exp(-x*x);
         ret[i] = y;
         sum += y;
@@ -97,7 +94,13 @@ function getLastKSamples(arr, k) {
 function ScalarTimeSeries(meta) {
     this.meta = $.extend(true, {}, meta);
     this.raw = [];
-    this.smooth = [];
+    if (this.meta.smoothing) {
+        this.smooth = [];
+        this.kernelWidth = this.meta.smoothing.sigmaPoints * 4;
+        this.halfKernelWidth = Math.floor(0.5 * this.kernelWidth);
+        this.kernel = gaussianKernel(this.meta.smoothing.sigmaPoints,
+                                     this.kernelWidth);
+    }
 }
 
 ScalarTimeSeries.prototype.getValue = function (rec) {
@@ -112,14 +115,14 @@ ScalarTimeSeries.prototype.add = function (rec) {
 
     pushTruncate(this.raw, [t, y], MAX_NUM_DATA_POINTS);
 
-    if (this.raw.length > KERNEL_WIDTH) {
-        var ysmooth = dotProduct(kernelG,
-                                 getLastKSamples(this.raw, KERNEL_WIDTH));
+    if (this.meta.smoothing && this.raw.length > this.kernelWidth) {
+        var ysmooth = dotProduct(this.kernel,
+                                 getLastKSamples(this.raw, this.kernelWidth));
 
-        var mid = this.raw.length - HALF_KERNEL_WIDTH;
+        var mid = this.raw.length - this.halfKernelWidth;
         var tmid = this.raw[mid][0];
         pushTruncate(this.smooth, [tmid, ysmooth],
-                     MAX_NUM_DATA_POINTS - HALF_KERNEL_WIDTH + 1);
+                     MAX_NUM_DATA_POINTS - this.halfKernelWidth + 1);
     }
 }
 
@@ -132,9 +135,15 @@ ScalarTimeSeries.prototype.getPlotData = function () {
 function RatioTimeSeries(meta) {
     this.meta = $.extend(true, {}, meta);
     this.raw = [];
-    this.smooth = [];
     this.numerator = [];
     this.denominator = [];
+    if (this.meta.smoothing) {
+        this.smooth = [];
+        this.kernelWidth = this.meta.smoothing.sigmaPoints * 4;
+        this.halfKernelWidth = Math.floor(0.5 * this.kernelWidth);
+        this.kernel = gaussianKernel(this.meta.smoothing.sigmaPoints,
+                                     this.kernelWidth);
+    }
 }
 
 RatioTimeSeries.prototype.getValue = function (rec) {
@@ -153,17 +162,17 @@ RatioTimeSeries.prototype.add = function (rec) {
     pushTruncate(this.denominator, [t, ydenom], MAX_NUM_DATA_POINTS);
     pushTruncate(this.raw, [t, ynum/ydenom], MAX_NUM_DATA_POINTS);
 
-    if (this.raw.length > KERNEL_WIDTH) {
-        var numSmooth = dotProduct(kernelG,
-                                   getLastKSamples(this.numerator, KERNEL_WIDTH));
-        var denomSmooth = dotProduct(kernelG,
-                                     getLastKSamples(this.denominator, KERNEL_WIDTH));
+    if (this.meta.smoothing && this.raw.length > this.kernelWidth) {
+        var numSmooth = dotProduct(this.kernel,
+                                   getLastKSamples(this.numerator, this.kernelWidth));
+        var denomSmooth = dotProduct(this.kernel,
+                                     getLastKSamples(this.denominator, this.kernelWidth));
 
-        var mid = this.raw.length - HALF_KERNEL_WIDTH;
+        var mid = this.raw.length - this.halfKernelWidth;
         var tmid = this.raw[mid][0];
 
         pushTruncate(this.smooth, [tmid, numSmooth / denomSmooth],
-                     MAX_NUM_DATA_POINTS - HALF_KERNEL_WIDTH + 1);
+                     MAX_NUM_DATA_POINTS - this.halfKernelWidth + 1);
     }
 }
 
@@ -186,7 +195,7 @@ function updatePlots() {
 function updatePlot(info) {
     if (!info.show) return;
 
-    var opts = $.extend(true, {}, DEFAULT_PLOT_OPTS, info.meta.plotOpts);
+    var opts = $.extend(true, {}, BASE_PLOT_OPTS, info.meta.plotOpts);
     var data = info.timeSeries.getPlotData();
     var raw = data[0];
     var smooth = data[1];
@@ -296,8 +305,7 @@ function handleMasterMeta(inMeta) {
         setupPlotHandlers(info);
     });
 
-    kernelG = gaussianKernel(SIGMA, KERNEL_WIDTH);
-
+    // connect to data feed
     var zmqUrl = settings
         .XGDS_ZMQ_WEB_SOCKET_URL
         .replace('{{host}}', window.location.hostname);
@@ -307,6 +315,7 @@ function handleMasterMeta(inMeta) {
                               autoReconnect: true});
     zmq.start();
 
+    // start updating plots
     periodicUpdatePlots();
 }
 
