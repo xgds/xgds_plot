@@ -176,20 +176,22 @@ xgds_plot = {
 
     onopen: function (zmq) {
         $('#socketStatus').html('connected');
-        zmq.subscribeJson('isruApp.resolvenstier1data:',
-                          xgds_plot.handleNsData);
+
+        $.each(xgds_plot.plots, function (i, info) {
+            var topic = info.meta.queryModel;
+            var handler = function (info) {
+                return function (zmq, topic, obj) {
+                    info.timeSeries.add(obj);
+                    xgds_plot.haveNewData = true;
+                };
+            }(info);
+
+            zmq.subscribeDjango(topic, handler);
+        });
     },
 
     onclose: function (zmq) {
         $('#socketStatus').html('disconnected');
-    },
-
-    handleNsData: function (zmq, topic, obj) {
-        var fields = obj.data.fields;
-        $.each(xgds_plot.plots, function (i, info) {
-            info.timeSeries.add(obj.data.fields);
-        });
-        xgds_plot.haveNewData = true;
     },
 
     handleMasterMeta: function (inMeta) {
@@ -231,6 +233,16 @@ xgds_plot = {
         });
         $("#plots").html(plotsHtml.join(""));
 
+        // connect to data feed
+        var zmqUrl = settings
+            .XGDS_ZMQ_WEB_SOCKET_URL
+            .replace('{{host}}', window.location.hostname);
+        var zmq = new ZmqManager(zmqUrl,
+                                 {onopen: xgds_plot.onopen,
+                                  onclose: xgds_plot.onclose,
+                                  autoReconnect: true});
+        zmq.start();
+
         var timeSeriesTypeRegistry = {
             'xgds_plot.value.Ratio': xgds_plot.value.Ratio,
             'xgds_plot.value.Scalar': xgds_plot.value.Scalar
@@ -251,16 +263,6 @@ xgds_plot = {
             xgds_plot.plots.push(info);
             xgds_plot.setupPlotHandlers(info);
         });
-
-        // connect to data feed
-        var zmqUrl = settings
-            .XGDS_ZMQ_WEB_SOCKET_URL
-            .replace('{{host}}', window.location.hostname);
-        var zmq = new ZmqManager(zmqUrl,
-                                 {onopen: xgds_plot.onopen,
-                                  onclose: xgds_plot.onclose,
-                                  autoReconnect: true});
-        zmq.start();
 
         // start updating plots
         xgds_plot.periodicUpdatePlots();
