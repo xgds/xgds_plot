@@ -5,6 +5,11 @@
 # __END_LICENSE__
 
 from geocamUtil.loader import getModelByName
+from geocamUtil import TimeUtil
+
+def posixTimeMsToUtcDateTime(posixTimeMs):
+    return TimeUtil.posixToUtcDateTime(posixTimeMs / 1000.0)
+
 
 class TimeSeriesQueryManager(object):
     """
@@ -33,6 +38,12 @@ class TimeSeriesQueryManager(object):
         """
         raise NotImplementedError()
 
+    def getTimestamp(self, obj):
+        """
+        Return the timestamp for a record.
+        """
+        raise NotImplementedError()
+
 
 class Django(TimeSeriesQueryManager):
     """
@@ -49,10 +60,15 @@ class Django(TimeSeriesQueryManager):
     def getValueName(self, valueField):
         return self.model._meta.get_field(valueField).verbose_name
 
-    def getData(minTime=None, maxTime=None):
+    def getData(self, minTime=None, maxTime=None):
         filterKwargs = {}
         if minTime is not None:
-            filterKwargs[self.timestampField + '__gte'] = minTime
+            filterKwargs[self.timestampField + '__gte'] = posixTimeMsToUtcDateTime(minTime)
         if maxTime is not None:
-            filterKwargs[self.timestampField + '__lte'] = maxTime
+            filterKwargs[self.timestampField + '__lte'] = posixTimeMsToUtcDateTime(maxTime)
         return self.model.objects.filter(**filterKwargs).order_by(self.timestampField)
+
+    def getTimestamp(self, obj):
+        posixTimeSecs = TimeUtil.utcDateTimeToPosix(getattr(obj, self.timestampField))
+        posixTimeMs = posixTimeSecs * 1000
+        return posixTimeMs
