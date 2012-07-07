@@ -4,6 +4,7 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+import time
 import operator
 
 from django.shortcuts import render_to_response
@@ -86,6 +87,10 @@ def meta(request):
                         mimetype='application/json')
 
 
+def now(request):
+    return HttpResponse(unicode(int(time.time() * 1000)).encode('utf-8'),
+                        mimetype='text/plain; charset="utf-8"')
+
 def tile(request):
     raise NotImplementedError()
 
@@ -93,7 +98,9 @@ def tile(request):
 def plots(request):
     exportFields = ('DATA_URL',
                     'SCRIPT_NAME',
-                    'XGDS_ZMQ_WEB_SOCKET_URL',)
+                    'XGDS_ZMQ_WEB_SOCKET_URL',
+                    'XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS',
+                    )
     exportSettings = dict(((k, getattr(settings, k)) for k in exportFields))
     return render_to_response('xgds_plot/plots.html',
                               {'settings': dumps(exportSettings)},

@@ -63,6 +63,9 @@
     .plotInfo {
         margin-left: 15px;
     }
+    #timeInterval {
+        padding-left: 15px;
+    }
   </style>
 {% endblock %}
 
@@ -72,7 +75,6 @@
   <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.js"></script>
   <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.navigate.js"></script>
   <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.symbol.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.min.js"></script>
   <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.threshold.min.js"></script>
   <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}geocamUtil/js/zmq.js"></script>
   <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}xgds_plot/js/xgds_plot.js"></script>
@@ -105,7 +107,15 @@
 {% block contents %}						
   <table class="bodyTable" ><tr>
   <td class="mainPanel">
-  <div id="socketStatus"></div>
+  <div id="topControls">
+    <span id="liveModeControl"></span>
+    <span id="socketStatus"></span>
+    <span id="timeInterval">
+      <span id="tmin"></span>
+      ...
+      <span id="tmax"></span>
+    </span>
+  </div>
   <div id="plots"></div>
     <div class="flotPlot"></div>
   </td>

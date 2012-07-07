@@ -137,8 +137,9 @@ class TimeSeriesIndex(object):
                                        'status.json')
         self.statusStore = JsonStore(self.statusPath)
         self.status = self.statusStore.read(dflt={
-            'maxPosixTimeMs': 0,
-            'numRecords': 0,
+            'minTime': None,
+            'maxTime': None,
+            'numSamples': 0,
             'numSegments': 0
         })
 
@@ -160,18 +161,21 @@ class TimeSeriesIndex(object):
 
     def indexRecord(self, obj):
         posixTimeMs = self.queryManager.getTimestamp(obj)
-        if posixTimeMs > self.status['maxPosixTimeMs']:
+        maxTime = self.status['maxTime'] or -99e+20
+        if posixTimeMs > maxTime:
             for segmentIndex in self.getSegmentIndicesContainingTime(posixTimeMs):
                 val = self.valueManager.getValue(obj)
                 self.addSample(segmentIndex, posixTimeMs, val)
                 self.delayBox.addJob(segmentIndex)
-            self.status['maxPosixTimeMs'] = posixTimeMs
-            self.status['numRecords'] += 1
-            if self.status['numRecords'] % 100 == 0:
-                print '%d segment update' % self.status['numRecords']
+            self.status['maxTime'] = max(maxTime, posixTimeMs)
+            minTime = self.status['minTime'] or 99e+20
+            self.status['minTime'] = min(minTime, posixTimeMs)
+            self.status['numSamples'] += 1
+            if self.status['numSamples'] % 100 == 0:
+                print '%d segment update' % self.status['numSamples']
         else:
-            print ('skipping old (duplicate?) record: posixTimeMs %.3f <= maxPosixTimeMs %.3f'
-                   % (posixTimeMs, self.status['maxPosixTimeMs']))
+            print ('skipping old (duplicate?) record: posixTimeMs %.3f <= maxTime %.3f'
+                   % (posixTimeMs, self.status['maxTime']))
 
     def addSample(self, segmentIndex, posixTimeMs, val):
         segmentKey = self.getKeyFromSegmentIndex(segmentIndex)
@@ -216,7 +220,7 @@ class TimeSeriesIndex(object):
     def batchIndex(self):
         # index everything in db that comes after the last thing we indexed on
         # the previous run
-        for rec in self.queryManager.getData(minTime=self.status['maxPosixTimeMs']):
+        for rec in self.queryManager.getData(minTime=self.status['maxTime']):
             self.indexRecord(rec)
 
         # batch process new records that arrived while we were

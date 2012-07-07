@@ -4,7 +4,9 @@
 // All Rights Reserved.
 // __END_LICENSE__
 
-xgds_plot = {
+xgds_plot = {};
+
+$.extend(xgds_plot, {
     MAX_NUM_DATA_POINTS: 500,
 
     BASE_PLOT_OPTS: {
@@ -18,7 +20,13 @@ xgds_plot = {
             hoverable: true,
             clickable: true
         },
-        shadowSize: 0
+        shadowSize: 0,
+        zoom: {
+            interactive: true
+        },
+        pan: {
+            interactive: true
+        }
     },
 
     masterMeta: null,
@@ -26,6 +34,16 @@ xgds_plot = {
     plots: [],
 
     haveNewData: false,
+
+    timeSkew: 0.0,
+
+    liveMode: true,
+
+    epochToString: function (epoch) {
+        var d = new Date(epoch);
+        dateString = d.toGMTString();
+        return dateString.replace(/ GMT$/, '');
+    },
 
     parseIso8601: function (string) {
         var regexp = "([0-9]{4})(-([0-9]{2})(-([0-9]{2})" +
@@ -127,10 +145,43 @@ xgds_plot = {
 
     /**********************************************************************/
 
-    updatePlots: function () {
-        if (!xgds_plot.haveNewData) {
-            return; // nothing to do
+    updateRange: function (plot) {
+        var xopts = plot.getAxes().xaxis.options;
+        var tminSpan = $('#tmin');
+        var tmaxSpan = $('#tmax');
+        tminSpan.html(xgds_plot.epochToString(xopts.min));
+        tmaxSpan.html(xgds_plot.epochToString(xopts.max) + ' UTC');
+    },
+
+    matchXRange: function (masterPlot) {
+        var masterXopts = masterPlot.getAxes().xaxis.options;
+        $.each(xgds_plot.plots, function (i, info) {
+            var slavePlot = info.plot;
+            if (slavePlot != null && slavePlot != masterPlot) {
+                var slaveXopts = slavePlot.getAxes().xaxis.options;
+
+                if (! ((masterXopts.min == slaveXopts.min)
+                       && (masterXopts.max == slaveXopts.max))) {
+                    slaveXopts.min = masterXopts.min;
+                    slaveXopts.max = masterXopts.max;
+                    slavePlot.setupGrid();
+                    slavePlot.draw();
+                }
+            }
+        });
+    },
+
+    setLiveMode: function (liveMode) {
+        xgds_plot.liveMode = liveMode;
+        var liveModeCheckBox = $('#liveModeCheckBox');
+        if (liveMode) {
+            liveModeCheckBox.attr('checked', 'checked');
+        } else {
+            liveModeCheckBox.removeAttr('checked');
         }
+    },
+
+    updatePlots: function () {
         $.each(xgds_plot.plots, function (i, info) {
             xgds_plot.updatePlot(info);
         });
@@ -141,17 +192,54 @@ xgds_plot = {
     updatePlot: function (info) {
         if (!info.show) return;
 
-        var opts = $.extend(true, {}, xgds_plot.BASE_PLOT_OPTS, info.meta.plotOpts);
-        var data = info.timeSeries.getPlotData();
-        var raw = data[0];
-        var smooth = data[1];
-        var styledRaw = $.extend(true, {}, raw, info.meta.seriesOpts);
-        var styledSmooth = $.extend(true, {}, smooth,
-                                    info.meta.smoothing.seriesOpts);
-        var plot = $.plot(info.plotDiv,
-                          [styledRaw, styledSmooth],
-                          opts);
-        info.plot = plot;
+        var data;
+        if (info.plot == undefined || xgds_plot.haveNewData) {
+            var data0 = info.timeSeries.getPlotData();
+            var raw = data0[0];
+            var smooth = data0[1];
+            var styledRaw = $.extend(true, {}, raw, info.meta.seriesOpts);
+            var styledSmooth = $.extend(true, {}, smooth,
+                                        info.meta.smoothing.seriesOpts);
+            data = [styledRaw, styledSmooth];
+        }
+
+        if (info.plot == undefined) {
+            // make new plot
+            var opts = $.extend(true,
+                                {
+                                    hooks: {
+                                        draw: xgds_plot.updateRange
+                                    }
+                                },
+                                xgds_plot.BASE_PLOT_OPTS,
+                                info.meta.plotOpts);
+
+            var plot = $.plot(info.plotDiv, data, opts);
+            info.plot = plot;
+            plot.getPlaceholder().bind('plotpan plotzoom', function (plot) {
+                return function () {
+                    xgds_plot.setLiveMode(false);
+                    xgds_plot.matchXRange(plot);
+                    // updateData(plot);
+                }
+            }(plot));
+        } else {
+            // update old plot
+            if (xgds_plot.haveNewData) {
+                info.plot.setData(data);
+            }
+        }
+
+        if (xgds_plot.liveMode) {
+            // auto-scroll to current time
+            var serverNow = new Date().valueOf() + xgds_plot.timeSkew;
+            var xopts = info.plot.getAxes().xaxis.options;
+            xopts.min = serverNow - settings.XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS;
+            xopts.max = serverNow;
+        }
+
+        info.plot.setupGrid();
+        info.plot.draw();
     },
 
     periodicUpdatePlots: function () {
@@ -196,6 +284,17 @@ xgds_plot = {
 
     handleMasterMeta: function (inMeta) {
         xgds_plot.masterMeta = inMeta;
+
+        // create live mode control
+        $('#liveModeControl').html('<input type="checkbox" checked="checked" id="liveModeCheckBox">'
+                                   + '</input>'
+                                   + '<label for="liveModeCheckBox">'
+                                   + 'Live</label>');
+        $('#liveModeCheckBox').change(function () {
+            var checked = $(this).attr('checked');
+            console.log(checked);
+            xgds_plot.liveMode = checked;
+        });
 
         // create show/hide controls for each plot
         var plotControlsHtml = [];
@@ -269,11 +368,17 @@ xgds_plot = {
 
     }, // function handleMasterMeta
 
+    handleServerTime: function (serverTime) {
+        xgds_plot.timeSkew = serverTime - new Date().valueOf();
+        //console.log('timeSkew: ' + xgds_plot.timeSkew);
+    },
+
     init: function () {
         $.getJSON(settings.SCRIPT_NAME + 'xgds_plot/meta.json', xgds_plot.handleMasterMeta);
+        $.getJSON(settings.SCRIPT_NAME + 'xgds_plot/now/', xgds_plot.handleServerTime);
     }
 
-}; // xgds_plot namespace
+}); // xgds_plot namespace
 
 /**********************************************************************/
 

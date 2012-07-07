@@ -21,4 +21,8 @@ urlpatterns = patterns(
         'tile', {},
         name='xgds_plot_tile'),
 
+    url(r'^now/$',
+        'now', {},
+        name='xgds_plot_now'),
+
 )

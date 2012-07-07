@@ -20,6 +20,9 @@ XGDS_PLOT_SEGMENT_RESOLUTION = 512
 # make segments more readable for debugging (increases file size)
 XGDS_PLOT_PRETTY_PRINT_JSON_SEGMENTS = False
 
+# in live mode, display this much history by default
+XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS = 120 * 1000
+
 # Specifies which time series are available for plotting. See example below.
 XGDS_PLOT_TIME_SERIES = ()
 
