@@ -6,6 +6,20 @@
 
 XGDS_ZMQ_WEB_SOCKET_URL = 'ws://{{host}}:8001/zmq/'
 
+XGDS_PLOT_DATA_SUBDIR = 'xgds_plot'
+
+# the shortest time interval between data points
+XGDS_PLOT_MIN_DATA_INTERVAL_MS = 500
+
+# the longest time interval that might need to be displayed in a plot
+XGDS_PLOT_MAX_SEGMENT_LENGTH_MS = 365 * 24 * 60 * 60 * 1000
+
+# the number of data points in a segment
+XGDS_PLOT_SEGMENT_RESOLUTION = 512
+
+# make segments more readable for debugging (increases file size)
+XGDS_PLOT_PRETTY_PRINT_JSON_SEGMENTS = False
+
 # Specifies which time series are available for plotting. See example below.
 XGDS_PLOT_TIME_SERIES = ()
 

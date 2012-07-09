@@ -4,63 +4,10 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
-from geocamUtil.loader import getModelByName
+from xgds_plot.segment import ScalarSegment, RatioSegment
 
 
-class TimeSeriesValueManager(object):
-    """
-    TimeSeriesValueManager is an abstract base class for classes that
-    support time series values in xgds_plot. It knows how to extract the
-    value or values of interest from a larger record.
-    """
-    def __init__(self, meta):
-        """
-        Initialize object with meta-data from settings. Note: May
-        normalize settings.
-        """
-        raise NotImplementedError()
-
-    def getValue(self, rec):
-        """
-        Extracts the desired value from a larger record.
-        """
-        raise NotImplementedError()
-
-    def getBucket(self):
-        """
-        Return the right type of bucket to summarize statistics over values
-        extracted by this manager.
-        """
-        raise NotImplementedError()
-
-
-class TimeSeriesValueBucket(object):
-    """
-    TimeSeriesValueBucket is an abstract base class for classes that
-    track statistics in xgds_plot. Each derived class knows how to
-    calculate relevant statistics for a particular value type.
-    """
-    
-    def addSample(self, rec):
-        """
-        Adds a sample for summary statistics.
-        """
-        raise NotImplementedError()
-
-    def getMean(self):
-        raise NotImplementedError()
-    
-    def getVariance(self):
-        raise NotImplementedError()
-
-    def getMin(self):
-        raise NotImplementedError()
-
-    def getMax(self):
-        raise NotImplementedError()
-
-
-class Scalar(TimeSeriesValueManager):
+class Scalar(object):
     def __init__(self, meta, queryManager):
         self.valueField = meta['valueField']
         self.queryManager = queryManager
@@ -74,53 +21,11 @@ class Scalar(TimeSeriesValueManager):
     def getValue(self, rec):
         return getattr(rec, self.valueField)
 
-    def getBucket(self):
-        return Bucket(self)
+    def makeSegment(self):
+        return ScalarSegment()
 
-    class Bucket(TimeSeriesValueBucket):
-        def __init__(self, parent):
-            self.parent = parent
-            self.sum = 0
-            self.sqsum = 0
-            self.min = None
-            self.max = None
-            self.count = 0
 
-        def addSample(self, rec):
-            val = self.parent.getValue(rec)
-            self.sum += val
-            self.sqsum += val * val
-
-            if self.min is None:
-                self.min = val
-            else:
-                self.min = min(self.min, val)
-
-            if self.max is None:
-                self.max = val
-            else:
-                self.max = max(self.max, val)
-            self.count += 1
-
-        def getMean(self):
-            if self.count:
-                return self.sum / self.count
-            else:
-                return None
-
-        def getVariance(self):
-            if self.count >= 2:
-                return (self.sqsum / self.count) - (self.sum / self.count) ** 2
-            else:
-                return None
-
-        def getMin(self):
-            return self.min
-
-        def getMax(self):
-            return self.max
-
-class Ratio(TimeSeriesValueManager):
+class Ratio(object):
     def __init__(self, meta, queryManager):
         self.numField, self.denomField = meta['valueFields']
         self.queryManager = queryManager
@@ -129,49 +34,5 @@ class Ratio(TimeSeriesValueManager):
         return (getattr(rec, self.numField),
                 getattr(rec, self.denomField))
 
-    def getBucket(self):
-        return Bucket(self)
-
-    # FIX: specialize for ratio
-    class Bucket(TimeSeriesValueBucket):
-        def __init__(self, parent):
-            self.parent = parent
-            self.sum = 0
-            self.sqsum = 0
-            self.min = None
-            self.max = None
-            self.count = 0
-
-        def addSample(self, rec):
-            val = self.parent.getValue(rec)
-            self.sum += val
-            self.sqsum += val * val
-
-            if self.min is None:
-                self.min = val
-            else:
-                self.min = min(self.min, val)
-
-            if self.max is None:
-                self.max = val
-            else:
-                self.max = max(self.max, val)
-            self.count += 1
-
-        def getMean(self):
-            if self.count:
-                return self.sum / self.count
-            else:
-                return None
-
-        def getVariance(self):
-            if self.count >= 2:
-                return (self.sqsum / self.count) - (self.sum / self.count) ** 2
-            else:
-                return None
-
-        def getMin(self):
-            return self.min
-
-        def getMax(self):
-            return self.max
+    def makeSegment(self):
+        return RatioSegment()

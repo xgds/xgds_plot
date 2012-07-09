@@ -17,7 +17,7 @@ urlpatterns = patterns(
         'meta', {},
         name='xgds_plot_meta'),
 
-    url(r'^tile/(?P<datasetCode>[^/]+)/(?P<zoom>\d+)/(?P<index>\d+)\.json$',
+    url(r'^tile/(?P<datasetCode>[^/]+)/(?P<level>\d+)/(?P<index>\d+)\.json$',
         'tile', {},
         name='xgds_plot_tile'),
 
