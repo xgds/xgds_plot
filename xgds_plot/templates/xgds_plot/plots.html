@@ -92,8 +92,19 @@
   });
 {% endblock jsInit %}
 
+{% block sitemenu-content-secondary %}
+{% load nav %}
+<div class="sitemenu-nav-secondary">
+    <ul>
+        <li {% currentnav instruments %}><a href="{% url instruments %}">Available Instruments</a></li>
+        <li {% currentnav nirvs nirLiveView nirLiveViewFeed showReferenceSpectra showBandDepths viewBandDepthStripChart createBandDepth showReferenceSpectrum%}><a href="{% url nirvs %}">NIRVS</a></li>
+        <li {% currentnav ns xgds_plot*%}><a href="{% url ns %}">NS</a></li>
+    </ul>
+</div>
+{% endblock %}
+
 {% block contents %}						
-  <table class="bodyTable"><tr>
+  <table class="bodyTable" border="1"><tr>
   <td class="mainPanel">
   <div id="socketStatus"></div>
   <div id="plots"></div>
