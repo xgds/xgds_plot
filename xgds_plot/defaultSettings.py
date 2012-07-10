@@ -6,7 +6,8 @@
 
 XGDS_ZMQ_WEB_SOCKET_URL = 'ws://{{host}}:8001/zmq/'
 
-XGDS_PLOT_DATA_SUBDIR = 'xgds_plot'
+# include trailing slash but no leading slash
+XGDS_PLOT_DATA_SUBDIR = 'xgds_plot/'
 
 # the shortest time interval between data points
 XGDS_PLOT_MIN_DATA_INTERVAL_MS = 500
@@ -17,7 +18,11 @@ XGDS_PLOT_MAX_SEGMENT_LENGTH_MS = 365 * 24 * 60 * 60 * 1000
 # the number of data points in a segment
 XGDS_PLOT_SEGMENT_RESOLUTION = 512
 
-# make segments more readable for debugging (increases file size)
+# if min display resolution is N, the segment level will be set to
+# load and display at least N data points (and might be up to 2N)
+XGDS_PLOT_MIN_DISPLAY_RESOLUTION = 384
+
+# make segment files more readable for debugging (increases file size)
 XGDS_PLOT_PRETTY_PRINT_JSON_SEGMENTS = False
 
 # in live mode, display this much history by default

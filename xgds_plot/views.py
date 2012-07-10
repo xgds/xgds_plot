@@ -97,9 +97,12 @@ def tile(request):
 
 def plots(request):
     exportFields = ('DATA_URL',
+                    'XGDS_PLOT_DATA_SUBDIR',
                     'SCRIPT_NAME',
                     'XGDS_ZMQ_WEB_SOCKET_URL',
                     'XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS',
+                    'XGDS_PLOT_SEGMENT_RESOLUTION',
+                    'XGDS_PLOT_MIN_DISPLAY_RESOLUTION',
                     )
     exportSettings = dict(((k, getattr(settings, k)) for k in exportFields))
     return render_to_response('xgds_plot/plots.html',

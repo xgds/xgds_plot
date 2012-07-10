@@ -225,7 +225,7 @@ $.extend(xgds_plot, {
                 return function () {
                     xgds_plot.setLiveMode(false);
                     xgds_plot.matchXRange(plot);
-                    // updateData(plot);
+                    xgds_plot.getSegmentDataCoveringPlot(plot);
                 }
             }(plot));
         } else {
@@ -285,6 +285,84 @@ $.extend(xgds_plot, {
 
     onclose: function (zmq) {
         $('#socketStatus').html('disconnected');
+    },
+
+    getSegmentLevelForInterval: function (xmin, xmax) {
+        var minSegmentsInPlot = (settings.XGDS_PLOT_MIN_DISPLAY_RESOLUTION
+                                 / settings.XGDS_PLOT_SEGMENT_RESOLUTION);
+        var maxSegmentLength = (xmax - xmin) / minSegmentsInPlot;
+        var level = Math.floor(Math.log(maxSegmentLength) / Math.log(2.0));
+        return level;
+    },
+
+    getSegmentsCoveringInterval: function (info, xmin, xmax) {
+        var level = xgds_plot.getSegmentLevelForInterval(xmin, xmax);
+        var segmentLength = Math.pow(2, level);
+        var indexMin = Math.floor(xmin / segmentLength);
+        var indexMax = Math.floor(xmax / segmentLength) + 1;
+        var result = [];
+        for (var i = indexMin; i < indexMax; i++) {
+            result.push({info: info,
+                         level: level,
+                         index: i});
+        }
+        return result;
+    },
+
+    getSegmentUrl: function (segment) {
+        return (settings.DATA_URL
+                + settings.XGDS_PLOT_DATA_SUBDIR
+                + 'plot/'
+                + segment.info.meta.valueCode + '/'
+                + segment.level + '/'
+                + segment.index + '.json');
+    },
+
+    loadSegmentData: function (segment) {
+        var current = xgds_plot.getSegmentDataCache(segment);
+        if (current == undefined) {
+            xgds_plot.requestSegmentData(segment);
+        }
+    },
+
+    getSegmentKey: function (segment) {
+        return segment.info + '/' + segment.level + '/' + segment.index;
+    },
+
+    getSegmentDataCache: function (segment) {
+        return xgds_plot.segmentCache[xgds_plot.getSegmentKey(segment)];
+    },
+
+    setSegmentDataCache: function (info, level, index, result) {
+        xgds_plot.segmentCache[xgds_plot.segmentKey(segment)] = result;
+    },
+
+    requestSegmentData: function (segment) {
+        $.getJSON(xgds_plot.getSegmentUrl(segment),
+                  function (segment) {
+                      return function (result) {
+                          xgds_plot.handleSegmentData(segment, result);
+                      };
+                  }(segment));
+    },
+
+    handleSegmentData: function (segment, result) {
+        xgds_plot.setSegmentDataCache(segment, result);
+        xgds_plot.haveNewData = true;
+    },
+
+    getSegmentDataCoveringPlot: function (plot) {
+        var xopts = plot.getAxes().xaxis.options;
+        xgds_plot.getSegmentDataCoveringInterval(xopts.min, xopts.max);
+    },
+
+    getSegmentDataCoveringInterval: function (xmin, xmax) {
+        $.each(xgds_plot.plots, function (i, info) {
+            var segments = xgds_plot.getSegmentsCoveringInterval(info, xmin, xmax);
+            $.each(segments, function (j, segment) {
+                xgds_plot.loadSegmentData(segment);
+            });
+        });
     },
 
     handleMasterMeta: function (inMeta) {
