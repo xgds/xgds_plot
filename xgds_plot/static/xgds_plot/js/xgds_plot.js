@@ -102,6 +102,11 @@ $.extend(xgds_plot, {
         return ret;
     },
 
+    gaussian: function (x, sigma) {
+        var xp = x / sigma;
+        return Math.exp(-xp * xp);
+    },
+
     getLastKSamples: function (arr, k) {
         var ret = [];
         var n = arr.length;
@@ -120,9 +125,9 @@ $.extend(xgds_plot, {
             this.raw = [];
             if (this.meta.smoothing) {
                 this.smooth = [];
-                this.kernelWidth = this.meta.smoothing.sigmaPoints * 4;
+                this.kernelWidth = this.meta.smoothing.sigmaSeconds * 4;
                 this.halfKernelWidth = Math.floor(0.5 * this.kernelWidth);
-                this.kernel = xgds_plot.gaussianKernel(this.meta.smoothing.sigmaPoints,
+                this.kernel = xgds_plot.gaussianKernel(this.meta.smoothing.sigmaSeconds,
                                                        this.kernelWidth);
             }
         },
@@ -134,9 +139,9 @@ $.extend(xgds_plot, {
             this.denominator = [];
             if (this.meta.smoothing) {
                 this.smooth = [];
-                this.kernelWidth = this.meta.smoothing.sigmaPoints * 4;
+                this.kernelWidth = this.meta.smoothing.sigmaSeconds * 4;
                 this.halfKernelWidth = Math.floor(0.5 * this.kernelWidth);
-                this.kernel = xgds_plot.gaussianKernel(this.meta.smoothing.sigmaPoints,
+                this.kernel = xgds_plot.gaussianKernel(this.meta.smoothing.sigmaSeconds,
                                                        this.kernelWidth);
             }
         }
@@ -394,16 +399,33 @@ xgds_plot.value.Scalar.prototype.add = function (rec) {
 
     xgds_plot.pushTruncate(this.raw, [t, y], xgds_plot.MAX_NUM_DATA_POINTS);
 
-    if (this.meta.smoothing && this.raw.length > this.kernelWidth) {
-        var ysmooth = xgds_plot
-            .dotProduct(this.kernel,
-                        xgds_plot.getLastKSamples(this.raw, this.kernelWidth));
+    // note: we could avoid recalculating most of the smoothed values
+    this.initSmoothing();
+}
 
-        var mid = this.raw.length - this.halfKernelWidth;
-        var tmid = this.raw[mid][0];
-        xgds_plot.pushTruncate(this.smooth, [tmid, ysmooth],
-                               xgds_plot.MAX_NUM_DATA_POINTS - this.halfKernelWidth + 1);
-    }
+xgds_plot.value.Scalar.prototype.initSmoothing = function () {
+    var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
+    this.kernelStart = 0;
+    this.smooth = [];
+    var self = this;
+    $.each(self.raw, function (i, ty) {
+        var t = ty[0];
+        var sum = 0.0;
+        var weightSum = 0.0;
+        for (var j = self.kernelStart; j < self.raw.length; j++) {
+            var typ = self.raw[j];
+            var tp = typ[0];
+            if ((t - tp) > (2 * sigmaMs)) {
+                self.kernelStart++;
+                continue;
+            }
+            var yp = typ[1];
+            var weight = xgds_plot.gaussian(tp - t, sigmaMs);
+            sum +=  weight * yp;
+            weightSum += weight;
+        }
+        self.smooth.push([t, sum / weightSum]);
+    });
 }
 
 xgds_plot.value.Scalar.prototype.getPlotData = function () {
@@ -428,20 +450,34 @@ xgds_plot.value.Ratio.prototype.add = function (rec) {
     xgds_plot.pushTruncate(this.denominator, [t, ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
     xgds_plot.pushTruncate(this.raw, [t, ynum/ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
 
-    if (this.meta.smoothing && this.raw.length > this.kernelWidth) {
-        var numSmooth = xgds_plot
-            .dotProduct(this.kernel,
-                        xgds_plot.getLastKSamples(this.numerator, this.kernelWidth));
-        var denomSmooth = xgds_plot
-            .dotProduct(this.kernel,
-                        xgds_plot.getLastKSamples(this.denominator, this.kernelWidth));
+    this.initSmoothing();
+}
 
-        var mid = this.raw.length - this.halfKernelWidth;
-        var tmid = this.raw[mid][0];
-
-        xgds_plot.pushTruncate(this.smooth, [tmid, numSmooth / denomSmooth],
-                               xgds_plot.MAX_NUM_DATA_POINTS - this.halfKernelWidth + 1);
-    }
+xgds_plot.value.Ratio.prototype.initSmoothing = function () {
+    var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
+    this.kernelStart = 0;
+    this.smooth = [];
+    var self = this;
+    $.each(self.raw, function (i, ty) {
+        var t = ty[0];
+        var numSum = 0.0;
+        var denomSum = 0.0;
+        for (var j = self.kernelStart; j < self.raw.length; j++) {
+            var tynump = self.numerator[j];
+            var tp = tynump[0];
+            if ((t - tp) > (2 * sigmaMs)) {
+                self.kernelStart++;
+                continue;
+            }
+            var ynump = tynump[1];
+            var tydenomp = self.denominator[j];
+            var ydenomp = tydenomp[1];
+            var weight = xgds_plot.gaussian(tp - t, sigmaMs);
+            numSum +=  weight * ynump;
+            denomSum += weight * ydenomp;
+        }
+        self.smooth.push([t, numSum / denomSum]);
+    });
 }
 
 xgds_plot.value.Ratio.prototype.getPlotData = xgds_plot.value.Scalar.prototype.getPlotData;
