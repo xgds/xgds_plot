@@ -28,6 +28,14 @@ XGDS_PLOT_PRETTY_PRINT_JSON_SEGMENTS = False
 # in live mode, display this much history by default
 XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS = 120 * 1000
 
+XGDS_PLOT_MAP_TILE_EPS = 1e-9
+XGDS_PLOT_MAP_PIXELS_PER_TILE = 256
+XGDS_PLOT_MAP_BBOX = [-155.470761, 19.756284,
+                        -155.463084, 19.763668]
+
+# zoom in interval [MIN_ZOOM, MAX_ZOOM)
+XGDS_PLOT_MAP_ZOOM_RANGE = (14, 20)
+
 # Specifies which time series are available for plotting. See example below.
 XGDS_PLOT_TIME_SERIES = ()
 
