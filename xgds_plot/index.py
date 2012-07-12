@@ -189,6 +189,13 @@ class TimeSeriesIndex(object):
         segmentData.addSample(bucketIndex, posixTimeMs, val)
         self.store[segmentKey] = segmentData
 
+    def writeJsonWithTmp(self, outPath, obj, styleArgs={}):
+        tmpPath = outPath + '.part'
+        json.dump(compactFloats(obj),
+                  open(tmpPath, 'wb'),
+                  **styleArgs)
+        os.rename(tmpPath, outPath)
+
     def writeOutputSegment(self, segmentIndex):
         level, t = segmentIndex
         segmentKey = self.getKeyFromSegmentIndex(segmentIndex)
@@ -202,9 +209,7 @@ class TimeSeriesIndex(object):
                              indent=4)
         else:
             styleArgs = dict(separators=(',', ':'))
-        json.dump(compactFloats(segmentData.getJsonObj()),
-                  open(outPath, 'wb'),
-                  **styleArgs)
+        self.writeJsonWithTmp(outPath, segmentData.getJsonObj(), styleArgs)
 
     def clean(self):
         # must call this before start() !

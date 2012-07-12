@@ -367,9 +367,12 @@ $.extend(xgds_plot, {
                       };
                   }(segment))
         .error(function (segment) {
-            xgds_plot.setSegmentDataCache(segment, {
-                timestamp: new Date().valueOf()
-            });
+            var updatedSegmentData = xgds_plot.getSegmentDataCache(segment);
+            if (updatedSegmentData == undefined) {
+                updatedSegmentData = {};
+            }
+            updatedSegmentData.timestamp = new Date().valueOf();
+            xgds_plot.setSegmentDataCache(segment, updatedSegmentData);
         }(segment));
     },
 
