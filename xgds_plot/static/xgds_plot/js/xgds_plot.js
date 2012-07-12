@@ -314,7 +314,7 @@ $.extend(xgds_plot, {
         var level = xgds_plot.getSegmentLevelForInterval(interval);
         var segmentLength = Math.pow(2, level);
         var indexMin = Math.floor(interval.min / segmentLength);
-        var indexMax = Math.floor(interval.max / segmentLength) + 1;
+        var indexMax = Math.ceil(interval.max / segmentLength) + 1;
         var result = [];
         for (var i = indexMin; i < indexMax; i++) {
             result.push({info: info,
@@ -337,6 +337,11 @@ $.extend(xgds_plot, {
         var current = xgds_plot.getSegmentDataCache(segment);
         if (current == undefined) {
             xgds_plot.requestSegmentData(segment);
+        } else {
+            var now = new Date().valueOf();
+            if (now - current.timestamp > 5000) {
+                xgds_plot.requestSegmentData(segment);
+            }
         }
     },
 
@@ -356,14 +361,16 @@ $.extend(xgds_plot, {
         $.getJSON(xgds_plot.getSegmentUrl(segment),
                   function (segment) {
                       return function (result) {
-                          xgds_plot.handleSegmentData(segment, result);
+                          result.timestamp = new Date().valueOf();
+                          xgds_plot.setSegmentDataCache(segment, result);
+                          xgds_plot.haveNewData = true;
                       };
-                  }(segment));
-    },
-
-    handleSegmentData: function (segment, result) {
-        xgds_plot.setSegmentDataCache(segment, result);
-        xgds_plot.haveNewData = true;
+                  }(segment))
+        .error(function (segment) {
+            xgds_plot.setSegmentDataCache(segment, {
+                timestamp: new Date().valueOf()
+            });
+        }(segment));
     },
 
     getIntervalForPlot: function (info) {
@@ -512,7 +519,7 @@ xgds_plot.value.Scalar.prototype.collectData = function (info) {
     var segments = xgds_plot.getSegmentsCoveringInterval(info, interval);
     $.each(segments, function (i, segment) {
         var segmentData = xgds_plot.getSegmentDataCache(segment);
-        if (segmentData != undefined) {
+        if (segmentData != undefined && segmentData.data != undefined) {
             var data = segmentData.data;
             $.each(data, function (i, row) {
                 var timestamp = row[0];
