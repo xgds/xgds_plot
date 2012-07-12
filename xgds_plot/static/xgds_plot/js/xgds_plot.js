@@ -397,6 +397,15 @@ $.extend(xgds_plot, {
         });
     },
 
+    setPlotVisibility: function (info, show) {
+        info.show = show;
+        if (show) {
+            $('#plotContainer_' + info.index).css('display', '');
+        } else {
+            $('#plotContainer_' + info.index).css('display', 'none');
+        }
+    },
+
     handleMasterMeta: function (inMeta) {
         xgds_plot.masterMeta = inMeta;
 
@@ -421,7 +430,12 @@ $.extend(xgds_plot, {
             }
             plotControlsHtml
                 .push('<div class="plotControl">'
-                      + '<input type="checkbox" ' + checked + 'id="showPlot_' + i + '"></input>'
+                      + '<input'
+                      + ' type="checkbox"' + checked
+                      + ' id="showPlot_' + i + '"'
+                      + ' disabled="disabled"'
+                      + '>'
+                      + '</input>'
                       + '<label for="showPlot_' + i + '">'
                       + meta.valueName + '</label></div>');
         });
@@ -475,6 +489,21 @@ $.extend(xgds_plot, {
                         plot: null}
             xgds_plot.plots.push(info);
             xgds_plot.setupPlotHandlers(info);
+        });
+
+        // render plots for the first time
+        xgds_plot.updatePlots();
+
+        // enable the plot controls
+        $.each(xgds_plot.plots, function (i, info) {
+            var checkbox = $('#showPlot_' + i);
+            checkbox.change(function (info) {
+                return function (evt) {
+                    var show = $(this).attr('checked');
+                    xgds_plot.setPlotVisibility(info, show);
+                };
+            }(info));
+            checkbox.removeAttr('disabled');
         });
 
         // start updating plots
