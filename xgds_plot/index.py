@@ -154,7 +154,7 @@ class TimeSeriesIndex(object):
             self.running = False
 
     def handleRecord(self, obj):
-        if queueMode:
+        if self.queueMode:
             self.queue.append(obj)
         else:
             self.indexRecord(obj)

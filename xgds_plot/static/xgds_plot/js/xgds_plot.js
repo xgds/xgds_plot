@@ -39,6 +39,8 @@ $.extend(xgds_plot, {
 
     liveMode: true,
 
+    segmentCache: {},
+
     epochToString: function (epoch) {
         var d = new Date(epoch);
         dateString = d.toGMTString();
@@ -68,6 +70,17 @@ $.extend(xgds_plot, {
         offset -= date.getTimezoneOffset();
         time = (Number(date) + (offset * 60 * 1000));
         return Number(time);
+    },
+
+    runNotTooOften: function (timerParent, func, timeoutMs) {
+        if (timerParent.timer != null) {
+            clearTimeout(timerParent.timer);
+            timerParent.timer = null;
+        }
+        timerParent.timer = setTimeout(function () {
+            timerParent.timer = null;
+            func();
+        }, timeoutMs);
     },
 
     pushTruncate: function (arr, vals, n) {
@@ -122,6 +135,7 @@ $.extend(xgds_plot, {
 
         Scalar: function (meta) {
             this.meta = $.extend(true, {}, meta);
+            this.liveData = [];
             this.raw = [];
             if (this.meta.smoothing) {
                 this.smooth = [];
@@ -134,6 +148,7 @@ $.extend(xgds_plot, {
 
         Ratio: function (meta) {
             this.meta = $.extend(true, {}, meta);
+            this.liveData = [];
             this.raw = [];
             this.numerator = [];
             this.denominator = [];
@@ -199,7 +214,7 @@ $.extend(xgds_plot, {
 
         var data;
         if (info.plot == undefined || xgds_plot.haveNewData) {
-            var data0 = info.timeSeries.getPlotData();
+            var data0 = info.timeSeries.getPlotData(info);
             var raw = data0[0];
             var smooth = data0[1];
             var styledRaw = $.extend(true, {}, raw, info.meta.seriesOpts);
@@ -221,13 +236,12 @@ $.extend(xgds_plot, {
 
             var plot = $.plot(info.plotDiv, data, opts);
             info.plot = plot;
-            plot.getPlaceholder().bind('plotpan plotzoom', function (plot) {
+            plot.getPlaceholder().bind('plotpan plotzoom', function (info) {
                 return function () {
                     xgds_plot.setLiveMode(false);
-                    xgds_plot.matchXRange(plot);
-                    xgds_plot.getSegmentDataCoveringPlot(plot);
+                    xgds_plot.matchXRange(info.plot);
                 }
-            }(plot));
+            }(info));
         } else {
             // update old plot
             if (xgds_plot.haveNewData) {
@@ -237,19 +251,20 @@ $.extend(xgds_plot, {
 
         if (xgds_plot.liveMode) {
             // auto-scroll to current time
-            var serverNow = new Date().valueOf() + xgds_plot.timeSkew;
+            var liveTimeInterval = xgds_plot.getLiveTimeInterval();
             var xopts = info.plot.getAxes().xaxis.options;
-            xopts.min = serverNow - settings.XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS;
-            xopts.max = serverNow;
+            xopts.min = liveTimeInterval.min;
+            xopts.max = liveTimeInterval.max;
         }
 
         info.plot.setupGrid();
         info.plot.draw();
     },
 
-    periodicUpdatePlots: function () {
-        xgds_plot.updatePlots();
-        setTimeout(xgds_plot.periodicUpdatePlots, 200);
+    getLiveTimeInterval: function () {
+        var serverNow = new Date().valueOf() + xgds_plot.timeSkew;
+        return {min: serverNow - settings.XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS,
+                max: serverNow};
     },
 
     setupPlotHandlers: function (info) {
@@ -287,19 +302,19 @@ $.extend(xgds_plot, {
         $('#socketStatus').html('disconnected');
     },
 
-    getSegmentLevelForInterval: function (xmin, xmax) {
+    getSegmentLevelForInterval: function (interval) {
         var minSegmentsInPlot = (settings.XGDS_PLOT_MIN_DISPLAY_RESOLUTION
                                  / settings.XGDS_PLOT_SEGMENT_RESOLUTION);
-        var maxSegmentLength = (xmax - xmin) / minSegmentsInPlot;
+        var maxSegmentLength = (interval.max - interval.min) / minSegmentsInPlot;
         var level = Math.floor(Math.log(maxSegmentLength) / Math.log(2.0));
         return level;
     },
 
-    getSegmentsCoveringInterval: function (info, xmin, xmax) {
-        var level = xgds_plot.getSegmentLevelForInterval(xmin, xmax);
+    getSegmentsCoveringInterval: function (info, interval) {
+        var level = xgds_plot.getSegmentLevelForInterval(interval);
         var segmentLength = Math.pow(2, level);
-        var indexMin = Math.floor(xmin / segmentLength);
-        var indexMax = Math.floor(xmax / segmentLength) + 1;
+        var indexMin = Math.floor(interval.min / segmentLength);
+        var indexMax = Math.floor(interval.max / segmentLength) + 1;
         var result = [];
         for (var i = indexMin; i < indexMax; i++) {
             result.push({info: info,
@@ -326,15 +341,15 @@ $.extend(xgds_plot, {
     },
 
     getSegmentKey: function (segment) {
-        return segment.info + '/' + segment.level + '/' + segment.index;
+        return segment.info.meta.valueCode + '/' + segment.level + '/' + segment.index;
     },
 
     getSegmentDataCache: function (segment) {
         return xgds_plot.segmentCache[xgds_plot.getSegmentKey(segment)];
     },
 
-    setSegmentDataCache: function (info, level, index, result) {
-        xgds_plot.segmentCache[xgds_plot.segmentKey(segment)] = result;
+    setSegmentDataCache: function (segment, result) {
+        xgds_plot.segmentCache[xgds_plot.getSegmentKey(segment)] = result;
     },
 
     requestSegmentData: function (segment) {
@@ -351,14 +366,21 @@ $.extend(xgds_plot, {
         xgds_plot.haveNewData = true;
     },
 
-    getSegmentDataCoveringPlot: function (plot) {
-        var xopts = plot.getAxes().xaxis.options;
-        xgds_plot.getSegmentDataCoveringInterval(xopts.min, xopts.max);
+    getIntervalForPlot: function (info) {
+        var xopts = info.plot.getAxes().xaxis.options;
+        return {min: xopts.min,
+                max: xopts.max};
     },
 
-    getSegmentDataCoveringInterval: function (xmin, xmax) {
+    getSegmentDataCoveringPlots: function () {
+        var plot1 = xgds_plot.plots[0];
+        var interval = xgds_plot.getIntervalForPlot(plot1);
+        xgds_plot.getSegmentDataCoveringInterval(interval);
+    },
+
+    getSegmentDataCoveringInterval: function (interval) {
         $.each(xgds_plot.plots, function (i, info) {
-            var segments = xgds_plot.getSegmentsCoveringInterval(info, xmin, xmax);
+            var segments = xgds_plot.getSegmentsCoveringInterval(info, interval);
             $.each(segments, function (j, segment) {
                 xgds_plot.loadSegmentData(segment);
             });
@@ -375,7 +397,6 @@ $.extend(xgds_plot, {
                                    + 'Live</label>');
         $('#liveModeCheckBox').change(function () {
             var checked = $(this).attr('checked');
-            console.log(checked);
             xgds_plot.liveMode = checked;
         });
 
@@ -447,8 +468,8 @@ $.extend(xgds_plot, {
         });
 
         // start updating plots
-        xgds_plot.periodicUpdatePlots();
-
+        setInterval(xgds_plot.updatePlots, 200);
+        setInterval(xgds_plot.getSegmentDataCoveringPlots, 200);
     }, // function handleMasterMeta
 
     handleServerTime: function (serverTime) {
@@ -468,20 +489,61 @@ $.extend(xgds_plot, {
 xgds_plot.value.Scalar.prototype.getValue = function (rec) {
     return [xgds_plot.parseIso8601(rec[this.meta.queryTimestampField]),
             rec[this.meta.valueField]];
-}
+};
 
 xgds_plot.value.Scalar.prototype.add = function (rec) {
     var ty = this.getValue(rec);
     var t = ty[0];
     var y = ty[1];
 
-    xgds_plot.pushTruncate(this.raw, [t, y], xgds_plot.MAX_NUM_DATA_POINTS);
+    xgds_plot.pushTruncate(this.liveData, [t, y], xgds_plot.MAX_NUM_DATA_POINTS);
+};
 
-    // note: we could avoid recalculating most of the smoothed values
-    this.initSmoothing();
-}
+xgds_plot.value.Scalar.prototype.collectData = function (info) {
+    var result = [];
 
-xgds_plot.value.Scalar.prototype.initSmoothing = function () {
+    // collect data from segments
+    var interval;
+    if (info.plot == undefined) {
+        interval = xgds_plot.getLiveTimeInterval();
+    } else {
+        interval = xgds_plot.getIntervalForPlot(info);
+    }
+    var segments = xgds_plot.getSegmentsCoveringInterval(info, interval);
+    $.each(segments, function (i, segment) {
+        var segmentData = xgds_plot.getSegmentDataCache(segment);
+        if (segmentData != undefined) {
+            var data = segmentData.data;
+            $.each(data, function (i, row) {
+                var timestamp = row[0];
+                var mean = row[1];
+                result.push([timestamp, mean]);
+            });
+        }
+    });
+    var lastSegmentTimestamp;
+    if (result.length > 0) {
+        var lastSegmentRow = result[result.length - 1];
+        lastSegmentTimestamp = lastSegmentRow[0];
+    } else {
+        lastSegmentTimestamp = 0;
+    }
+
+    // add in rows from liveData
+    $.each(this.liveData, function (i, row) {
+        var timestamp = row[0];
+        if (timestamp > lastSegmentTimestamp) {
+            result.push(row);
+        }
+    });
+
+    return result;
+};
+
+xgds_plot.value.Scalar.prototype.initSmoothing = function (info) {
+    //this.raw = this.liveData;
+    this.raw = this.collectData(info);
+
     var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
     this.kernelStart = 0;
     this.smooth = [];
@@ -504,11 +566,12 @@ xgds_plot.value.Scalar.prototype.initSmoothing = function () {
         }
         self.smooth.push([t, sum / weightSum]);
     });
-}
+};
 
-xgds_plot.value.Scalar.prototype.getPlotData = function () {
+xgds_plot.value.Scalar.prototype.getPlotData = function (info) {
+    this.initSmoothing(info);
     return [{data: this.raw}, {data: this.smooth}];
-}
+};
 
 /**********************************************************************/
 
@@ -516,7 +579,7 @@ xgds_plot.value.Ratio.prototype.getValue = function (rec) {
     return [xgds_plot.parseIso8601(rec[this.meta.queryTimestampField]),
             rec[this.meta.valueFields[0]],
             rec[this.meta.valueFields[1]]];
-}
+};
 
 xgds_plot.value.Ratio.prototype.add = function (rec) {
     var tnd = this.getValue(rec);
@@ -524,14 +587,20 @@ xgds_plot.value.Ratio.prototype.add = function (rec) {
     var ynum = tnd[1];
     var ydenom = tnd[2];
 
-    xgds_plot.pushTruncate(this.numerator, [t, ynum], xgds_plot.MAX_NUM_DATA_POINTS);
-    xgds_plot.pushTruncate(this.denominator, [t, ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
-    xgds_plot.pushTruncate(this.raw, [t, ynum/ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
+    //xgds_plot.pushTruncate(this.numerator, [t, ynum], xgds_plot.MAX_NUM_DATA_POINTS);
+    //xgds_plot.pushTruncate(this.denominator, [t, ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
+    xgds_plot.pushTruncate(this.liveData, [t, ynum/ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
+};
 
-    this.initSmoothing();
-}
+xgds_plot.value.Ratio.prototype.collectData = xgds_plot.value.Scalar.prototype.collectData;
 
-xgds_plot.value.Ratio.prototype.initSmoothing = function () {
+// FIX: figure out how to make smoothing work properly with ratios and segment data
+xgds_plot.value.Ratio.prototype.initSmoothing = xgds_plot.value.Scalar.prototype.initSmoothing;
+
+/*
+xgds_plot.value.Ratio.prototype.initSmoothing = function (info) {
+    this.raw = this.collectData(info);
+
     var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
     this.kernelStart = 0;
     this.smooth = [];
@@ -556,7 +625,8 @@ xgds_plot.value.Ratio.prototype.initSmoothing = function () {
         }
         self.smooth.push([t, numSum / denomSum]);
     });
-}
+};
+*/
 
 xgds_plot.value.Ratio.prototype.getPlotData = xgds_plot.value.Scalar.prototype.getPlotData;
 

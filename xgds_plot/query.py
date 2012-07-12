@@ -63,7 +63,7 @@ class Django(TimeSeriesQueryManager):
     def getData(self, minTime=None, maxTime=None):
         filterKwargs = {}
         if minTime is not None:
-            filterKwargs[self.timestampField + '__gte'] = posixTimeMsToUtcDateTime(minTime)
+            filterKwargs[self.timestampField + '__gt'] = posixTimeMsToUtcDateTime(minTime)
         if maxTime is not None:
             filterKwargs[self.timestampField + '__lte'] = posixTimeMsToUtcDateTime(maxTime)
         return self.model.objects.filter(**filterKwargs).order_by(self.timestampField)
