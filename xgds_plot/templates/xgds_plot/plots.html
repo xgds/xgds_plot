@@ -94,16 +94,6 @@
   });
 {% endblock jsInit %}
 
-{% block sitemenu-content-secondary %}
-{% load nav %}
-<div class="sitemenu-nav-secondary">
-    <ul>
-        <li {% currentnav nirvs nirLiveView nirLiveViewFeed showReferenceSpectra showBandDepths viewBandDepthStripChart createBandDepth showReferenceSpectrum%}><a href="{% url nirvs %}">Near IR Vis Spectrometer</a></li>
-        <li {% currentnav ns xgds_plot*%}><a href="{% url xgds_plot_plots %}">Neutron Spectrometer</a></li>
-    </ul>
-</div>
-{% endblock %}
-
 {% block contents %}						
   <table class="bodyTable" ><tr>
   <td class="mainPanel">
