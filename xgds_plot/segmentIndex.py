@@ -17,6 +17,7 @@ from geocamUtil.store import FileStore, LruCacheStore
 from geocamUtil.zmq.delayBox import DelayBox
 
 from xgds_plot import settings
+from xgds_plot import plotUtil
 
 MIN_SEGMENT_LENGTH_MS = (settings.XGDS_PLOT_MIN_DATA_INTERVAL_MS
                          * settings.XGDS_PLOT_SEGMENT_RESOLUTION)
@@ -30,51 +31,9 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
 
 SEGMENTS_IN_MEMORY_PER_TIME_SERIES = 100
 
-# CompactFloat/compactFloats: annoying hack to avoid printing out bogus
-# extra digits when floats are embedded in JSON objects.
-# http://stackoverflow.com/questions/1447287/format-floats-with-standard-json-module
-
-class CompactFloat(float):
-    def __repr__(self):
-        return '%.15g' % self
 
 
-def compactFloats(obj):
-    if isinstance(obj, float):
-        return CompactFloat(obj)
-    elif isinstance(obj, dict):
-        return dict((k, compactFloats(v)) for k, v in obj.items())
-    elif isinstance(obj, (list, tuple)):
-        return map(compactFloats, obj)
-    return obj
-
-
-def rmIfPossible(path):
-    print '  deleting %s' % path
-    try:
-        shutil.rmtree(path)
-    except OSError, oe:
-        print >> sys.stderr, 'Failed to remove %s: %s' % (path, oe)
-
-
-class JsonStore(object):
-    def __init__(self, path):
-        self.path = os.path.realpath(path)
-
-    def write(self, obj):
-        pathDir = os.path.dirname(self.path)
-        if not os.path.exists(pathDir):
-            os.makedirs(pathDir)
-        json.dump(obj, open(self.path, 'wb'), indent=4, sort_keys=True)
-
-    def read(self, dflt=None):
-        if os.path.exists(self.path):
-            return json.load(open(self.path, 'rb'))
-        else:
-            return dflt
-
-
-class TimeSeriesIndex(object):
+class SegmentIndex(object):
     @classmethod
     def getKeyFromSegmentIndex(cls, segmentIndex):
         level, t = segmentIndex
@@ -112,6 +71,7 @@ class TimeSeriesIndex(object):
 
         self.valueCode = self.meta['valueCode']
         self.cacheDir = os.path.join(DATA_PATH,
+                                     'plot',
                                      'cache',
                                      self.valueCode)
         self.segmentDir = os.path.join(DATA_PATH,
@@ -135,7 +95,7 @@ class TimeSeriesIndex(object):
 
         self.statusPath = os.path.join(self.segmentDir,
                                        'status.json')
-        self.statusStore = JsonStore(self.statusPath)
+        self.statusStore = plotUtil.JsonStore(self.statusPath)
         self.status = self.statusStore.read(dflt={
             'minTime': None,
             'maxTime': None,
@@ -191,7 +151,7 @@ class TimeSeriesIndex(object):
 
     def writeJsonWithTmp(self, outPath, obj, styleArgs={}):
         tmpPath = outPath + '.part'
-        json.dump(compactFloats(obj),
+        json.dump(plotUtil.compactFloats(obj),
                   open(tmpPath, 'wb'),
                   **styleArgs)
         os.rename(tmpPath, outPath)
@@ -215,8 +175,8 @@ class TimeSeriesIndex(object):
         # must call this before start() !
         assert not self.running
 
-        rmIfPossible(self.cacheDir)
-        rmIfPossible(self.segmentDir)
+        plotUtil.rmIfPossible(self.cacheDir)
+        plotUtil.rmIfPossible(self.segmentDir)
 
     def flushQueue(self):
         while self.queue:

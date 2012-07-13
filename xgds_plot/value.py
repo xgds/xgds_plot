@@ -5,9 +5,12 @@
 # __END_LICENSE__
 
 from xgds_plot.segment import ScalarSegment, RatioSegment
-
+from xgds_plot.tile import ScalarTile, RatioTile
 
 class Scalar(object):
+    makeSegment = ScalarSegment
+    makeTile = ScalarTile
+
     def __init__(self, meta, queryManager):
         self.valueField = meta['valueField']
         self.queryManager = queryManager
@@ -21,11 +24,11 @@ class Scalar(object):
     def getValue(self, rec):
         return getattr(rec, self.valueField)
 
-    def makeSegment(self):
-        return ScalarSegment()
-
 
 class Ratio(object):
+    makeSegment = RatioSegment
+    makeTile = RatioTile
+
     def __init__(self, meta, queryManager):
         self.numField, self.denomField = meta['valueFields']
         self.queryManager = queryManager
@@ -33,6 +36,3 @@ class Ratio(object):
     def getValue(self, rec):
         return (getattr(rec, self.numField),
                 getattr(rec, self.denomField))
-
-    def makeSegment(self):
-        return RatioSegment()

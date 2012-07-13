@@ -13,10 +13,12 @@ from cStringIO import StringIO
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 
+import numpy
+from scipy.ndimage import filters
+
 from geocamUtil import KmlUtil
 
 from xgds_plot import settings
-from xgds_plot import meta
 
 EARTH_RADIUS_METERS = 6371 * 1000
 METERS_PER_DEGREE = 2 * math.pi * EARTH_RADIUS_METERS / 360
@@ -24,6 +26,7 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
                          settings.XGDS_PLOT_DATA_SUBDIR,
                          'map')
 
+N = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE
 
 def dosys(cmd):
     ret = os.system(cmd)
@@ -87,69 +90,6 @@ def getTilesOverlappingBounds(bounds, levels=None):
                 yield level, x, y
 
 
-def mapIndexKml(request):
-    out = StringIO()
-    out.write("""
-<Document>
-  <name>Raster Maps</name>
-""")
-    for layerOpts in meta.TIME_SERIES:
-        if 'map' in layerOpts:
-            layerUrl = (request.build_absolute_uri
-                        (reverse
-                         ('xgds_plot_mapKml',
-                          args=[layerOpts['valueCode']])))
-            out.write("""
-<NetworkLink>
-  <name>%(name)s</name>
-  <visibility>0</visibility>
-  <Link>
-    <href>%(layerUrl)s</href>
-  </Link>
-</NetworkLink>
-"""
-                      % dict(name=layerOpts['valueName'],
-                             layerUrl=layerUrl))
-    out.write("</Document>")
-    return KmlUtil.wrapKmlDjango(out.getvalue())
-
-
-def mapKml(request, layerId):
-    layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
-    initialTile = getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
-    level, x, y = initialTile
-    initialTileUrl = (request.build_absolute_uri
-                      (reverse
-                       ('xgds_plot_mapTileKml',
-                        args=(layerId, level, x, y))))
-    legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
-                                           % (DATA_PATH,
-                                              layerId))
-    return KmlUtil.wrapKmlDjango("""
-<Document>
-  <name>%(name)s</name>
-  <NetworkLink>
-    <name>Data</name>
-    <visibility>0</visibility>
-    <Link>
-      <href>%(initialTileUrl)s</href>
-    </Link>
-  </NetworkLink>
-  <ScreenOverlay>
-    <name>Legend</name>
-    <visibility>0</visibility>
-    <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-    <screenXY x="0" y="0.25" xunits="fraction" yunits="fraction"/>
-    <Icon>
-      <href>%(legendUrl)s</href>
-    </Icon>
-  </ScreenOverlay>
-</Document>
-""" % dict(name=layerOpts['valueName'],
-           initialTileUrl=initialTileUrl,
-           legendUrl=legendUrl))
-
-
 def getLatLonBox(bounds):
     return ("""
 <LatLonBox>
@@ -172,121 +112,77 @@ def getLatLonAltBox(bounds):
 """ % bounds)
 
 
-def mapTileKml(request, layerId, level, x, y):
-    level = int(level)
-    x = int(x)
-    y = int(y)
-
-    # make links to sub-tiles if necessary
-    if level < settings.XGDS_PLOT_MAP_ZOOM_RANGE[1] - 1:
-        linkList = []
-        subLevel = level + 1
-        for offset in ((0, 0), (0, 1), (1, 0), (1, 1)):
-            subX = 2 * x + offset[0]
-            subY = 2 * y + offset[1]
-            subUrl = (request.build_absolute_uri
-                      (reverse
-                       ('xgds_plot_mapTileKml',
-                        args=[layerId, subLevel, subX, subY])))
-            linkList.append("""
-<NetworkLink>
-  <Region>
-    %(box)s
-    <Lod>
-      <minLodPixels>%(minLodPixels)s</minLodPixels>
-      <maxLodPixels>-1</maxLodPixels>
-    </Lod>
-  </Region>
-  <Link>
-    <href>%(subUrl)s</href>
-    <viewRefreshMode>onRegion</viewRefreshMode>
-  </Link>
-</NetworkLink>
-""" % dict(box=getLatLonAltBox(getTileBounds(subLevel, subX, subY)),
-           subUrl=subUrl,
-           minLodPixels=settings.XGDS_PLOT_MAP_PIXELS_PER_TILE // 2))
-        netLinks = '\n'.join(linkList)
-    else:
-        netLinks = ''
-
-    #tileUrl = request.build_absolute_uri(reverse('mapTileImage', args=[level, x, y]))
-    tileUrl = request.build_absolute_uri('%s/%s/%d/%d/%d.png'
-                                         % (DATA_PATH,
-                                            layerId,
-                                            level, x, y))
-    bounds = getTileBounds(level, x, y)
-    minZoom, maxZoom = settings.XGDS_PLOT_MAP_ZOOM_RANGE
-    if level < maxZoom - 1:
-        maxLodPixels = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE * 2
-    else:
-        maxLodPixels = -1
-    if level > minZoom:
-        minLodPixels = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE // 2
-    else:
-        minLodPixels = -1
-    return KmlUtil.wrapKmlDjango("""
-<Folder>
-  %(netLinks)s
-  <GroundOverlay>
-    <Icon>
-      <href>%(tileUrl)s</href>
-      <refreshMode>onInterval</refreshMode>
-      <refreshInterval>5</refreshInterval>
-    </Icon>
-    %(llBox)s
-    <drawOrder>%(level)s</drawOrder>
-    <Region>
-      %(llaBox)s
-      <Lod>
-        <minLodPixels>%(minLodPixels)s</minLodPixels>
-        <maxLodPixels>%(maxLodPixels)s</maxLodPixels>
-      </Lod>
-    </Region>
-  </GroundOverlay>
-  <Style>
-    <ListStyle>
-      <listItemType>checkHideChildren</listItemType>
-    </ListStyle>
-  </Style>
-</Folder>
-""" % dict(netLinks=netLinks,
-           llBox=getLatLonBox(bounds),
-           llaBox=getLatLonAltBox(bounds),
-           tileUrl=tileUrl,
-           level=level,
-           minLodPixels=minLodPixels,
-           maxLodPixels=maxLodPixels))
-
-
-def mapTileImage(request, level, x, y):
-    level = int(level)
-    x = int(x)
-    y = int(y)
-
-    genTilePath = os.path.join(os.path.dirname(__file__), 'genTile.py')
-    coordArgs = ('--west=%s --south=%s --east=%s --north=%s'
-                 % getTileBounds(level, x, y))
-    fd, outPath = tempfile.mkstemp('-genTileOutput.png')
-    os.close(fd)
-    ret = dosys('%s %s %s'
-                % (genTilePath, coordArgs, outPath))
-
-    if ret == 0:
-        img = outPath
-        mimetype = 'image/png'
-    else:
-        # stupid fallback if genTile doesn't work. for example, if matplotlib is not installed.
-        img = os.path.join(os.path.dirname(__file__), 'static', 'style', 'isruApp', 'resolveLogo70.png')
-        mimetype = 'image/gif'
-    try:
-        pass  # os.remove(outPath)
-    except OSError:
-        pass
-    return HttpResponse(file(img, 'r').read(),
-                        mimetype=mimetype)
-
-
 def getMetersPerPixel(level):
     radiansPerTile = 2 * math.pi / 2 ** level
     metersPerTile = radiansPerTile * EARTH_RADIUS_METERS
     return metersPerTile / settings.XGDS_PLOT_MAP_PIXELS_PER_TILE
+
+class DotDict(object):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
+
+class ScalarTile(object):
+    @classmethod
+    def spread(cls, M, sigma):
+        return (2 * math.pi * sigma ** 2
+                * filters.gaussian_filter(M, sigma))
+
+    def __init__(self, tileParams, smoothingMeters, opaqueWeight):
+        self.tileParams = tileParams
+        self.smoothingMeters = smoothingMeters
+        self.opaqueWeight = opaqueWeight
+
+        # even when zoomed all the way out, do minimal blurring of
+        # 0.5 pixels to make data more visible
+        level, _x, _y = self.tileParams
+        self.sigmaPixels = max(0.5, self.smoothingMeters / getMetersPerPixel(level))
+
+        self.numSum = numpy.zeros((N, N))
+        self.weightSum = numpy.zeros((N, N))
+
+    def addSample(self, val, i, j):
+        self.numSum[i, j] += val
+        self.weightSum[i, j] += 1
+
+    def getSmoothed(self):
+        sumBlurred = filters.gaussian_filter(self.numSum, self.sigmaPixels)
+        weightSumBlurred = filters.gaussian_filter(self.weightSum, self.sigmaPixels)
+
+        alpha = self.spread(self.weightSum / self.opaqueWeight,
+                            self.sigmaPixels)
+        alpha[alpha < 0.1] = 0
+        alpha[alpha > 1.0] = 1
+
+        result = sumBlurred / (weightSumBlurred + 1e-3)
+        result[alpha < 0.1] = 0
+
+        return result, alpha
+
+class RatioTile(ScalarTile):
+    def __init__(self, tileParams, smoothingMeters, opaqueWeight):
+        super(RatioTile, self).__init__(tileParams, smoothingMeters, opaqueWeight)
+
+        self.denomSum = numpy.zeros((N, N))
+
+    def addSample(self, vals, i, j):
+        num, denom = vals
+        self.numSum[i, j] += num
+        self.denomSum[i, j] += denom
+        self.weightSum[i, j] += 1
+
+    def getSmoothed(self):
+        numSumBlurred = filters.gaussian_filter(self.numSum, self.sigmaPixels)
+
+        alpha = self.spread(self.weightSum / self.opaqueWeight,
+                            self.sigmaPixels)
+        alpha[alpha < 0.1] = 0
+        alpha[alpha > 1.0] = 1
+
+        denomSumBlurred = filters.gaussian_filter(self.numSum, self.sigmaPixels)
+        denomSumBlurred[alpha < 0.1] = 1  # avoid divide by zero
+
+        result = numSumBlurred / (denomSumBlurred + 1e-3)
+        result[alpha < 0.1] = 0
+
+        return result, alpha

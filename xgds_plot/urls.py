@@ -24,14 +24,14 @@ urlpatterns = patterns(
         name='xgds_plot_now'),
 
     url(r'^mapIndex\.kml$',
-        tile.mapIndexKml, {},
+        'mapIndexKml', {},
         'xgds_plot_mapIndexKml'),
 
     url(r'^mapLayer_(?P<layerId>[^\.]+)\.kml$',
-        tile.mapKml, {},
+        'mapKml', {},
         'xgds_plot_mapKml'),
 
     url(r'^mapTile/(?P<layerId>[^/]+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
-        tile.mapTileKml, {},
+        'mapTileKml', {},
         'xgds_plot_mapTileKml'),
 )

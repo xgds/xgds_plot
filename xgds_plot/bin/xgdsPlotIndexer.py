@@ -14,7 +14,7 @@ from geocamUtil.zmq.util import zmqLoop, getTimestampFields
 
 from xgds_plot import settings
 from xgds_plot.views import TIME_SERIES
-from xgds_plot.index import TimeSeriesIndex
+from xgds_plot.segmentIndex import SegmentIndex
 
 
 class XgdsPlotIndexer(object):
@@ -23,7 +23,7 @@ class XgdsPlotIndexer(object):
         self.subscriber = ZmqSubscriber(**ZmqSubscriber.getOptionValues(self.opts))
         self.indexes = {}
         for meta in TIME_SERIES:
-            index = TimeSeriesIndex(meta, self.subscriber)
+            index = SegmentIndex(meta, self.subscriber)
             self.indexes[meta['valueCode']] = index
 
     def start(self):
