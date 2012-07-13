@@ -14,7 +14,7 @@ $.extend(xgds_plot, {
             mode: 'time'
         },
         yaxis: {
-            labelWidth: 20
+            labelWidth: 35
         },
         grid: {
             hoverable: true,
