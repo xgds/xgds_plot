@@ -12,8 +12,6 @@ from django.template import RequestContext
 
 from geocamUtil import anyjson as json
 
-from xgds_plot.meta import TIME_SERIES
-from xgds_plot import tile
 from xgds_plot import settings
 
 

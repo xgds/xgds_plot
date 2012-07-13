@@ -6,8 +6,6 @@
 
 from django.conf.urls.defaults import url, patterns
 
-from xgds_plot import tile
-
 urlpatterns = patterns(
     'xgds_plot.views',
 
