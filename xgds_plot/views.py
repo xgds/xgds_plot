@@ -13,7 +13,6 @@ from django.template import RequestContext
 from geocamUtil import anyjson as json
 
 from xgds_plot import settings
-from xgds_plot.meta import TIME_SERIES
 
 
 def dumps(obj):
@@ -21,6 +20,7 @@ def dumps(obj):
 
 
 def meta(request):
+    from xgds_plot.meta import TIME_SERIES
     return HttpResponse(dumps(TIME_SERIES),
                         mimetype='application/json')
 
