@@ -6,6 +6,8 @@
 
 import math
 import numpy
+import sys
+import time
 
 from xgds_plot import settings
 
@@ -15,6 +17,8 @@ MIN_SEGMENT_LENGTH_MS = (settings.XGDS_PLOT_MIN_DATA_INTERVAL_MS
 MIN_SEGMENT_LEVEL = int(math.log(MIN_SEGMENT_LENGTH_MS, 2))
 
 MAX_SEGMENT_LEVEL = int(math.ceil(math.log(settings.XGDS_PLOT_MAX_SEGMENT_LENGTH_MS, 2))) + 1
+
+LAST_DENOM_ZERO_WARNING_TIME = 0
 
 class ScalarSegment(object):
     def __init__(self):
@@ -74,9 +78,18 @@ class RatioSegment(ScalarSegment):
         self.denomSum = numpy.zeros(self.n)
 
     def addSample(self, bucketIndex, posixTimeMs, vals):
+        global LAST_DENOM_ZERO_WARNING_TIME
+
         num, denom = vals
-        val = float(num) / denom
-        super(RatioSegment, self).addSample(bucketIndex, posixTimeMs, val)
+
+        if denom == 0:
+            now = time.time()
+            if now - LAST_DENOM_ZERO_WARNING_TIME > 5:
+                print >> sys.stderr, 'warning: RatioSegment.addSample: denominator = 0, leaving sample out of some statistics to avoid divide by zero'
+                LAST_DENOM_ZERO_WARNING_TIME = now
+        else:
+            val = float(num) / denom
+            super(RatioSegment, self).addSample(bucketIndex, posixTimeMs, val)
 
         self.numSum[bucketIndex] += num
         self.denomSum[bucketIndex] += denom
