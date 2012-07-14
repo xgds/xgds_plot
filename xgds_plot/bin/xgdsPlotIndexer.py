@@ -13,7 +13,7 @@ from geocamUtil.zmq.subscriber import ZmqSubscriber
 from geocamUtil.zmq.util import zmqLoop, getTimestampFields
 
 from xgds_plot import settings
-from xgds_plot.views import TIME_SERIES
+from xgds_plot.meta import TIME_SERIES
 from xgds_plot.segmentIndex import SegmentIndex
 
 
