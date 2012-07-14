@@ -14,7 +14,7 @@ urlpatterns = patterns(
         name='xgds_plot_plots'),
 
     url(r'^meta.json$',
-        'meta', {},
+        'getMeta', {},
         name='xgds_plot_meta'),
 
     url(r'^now/$',

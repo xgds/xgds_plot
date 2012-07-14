@@ -4,24 +4,35 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+import os
 import time
+from cStringIO import StringIO
 
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, Http404
 from django.template import RequestContext
+from django.core.urlresolvers import reverse
 
 from geocamUtil import anyjson as json
+from geocamUtil import KmlUtil
 
 from xgds_plot import settings
+try:
+    from xgds_plot import meta, tile
+except ImportError:
+    print 'warning: scipy is not available; some views will not work'
+
+MAP_DATA_PATH = os.path.join(settings.DATA_URL,
+                         settings.XGDS_PLOT_DATA_SUBDIR,
+                         'map')
 
 
 def dumps(obj):
     return json.dumps(obj, indent=4, sort_keys=True)
 
 
-def meta(request):
-    from xgds_plot.meta import TIME_SERIES
-    return HttpResponse(dumps(TIME_SERIES),
+def getMeta(request):
+    return HttpResponse(dumps(meta.TIME_SERIES),
                         mimetype='application/json')
 
 
@@ -72,14 +83,14 @@ def mapIndexKml(request):
 
 def mapKml(request, layerId):
     layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
-    initialTile = getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
+    initialTile = tile.getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
     level, x, y = initialTile
     initialTileUrl = (request.build_absolute_uri
                       (reverse
                        ('xgds_plot_mapTileKml',
                         args=(layerId, level, x, y))))
     legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
-                                           % (DATA_PATH,
+                                           % (MAP_DATA_PATH,
                                               layerId))
     return KmlUtil.wrapKmlDjango("""
 <Document>
@@ -104,6 +115,7 @@ def mapKml(request, layerId):
 """ % dict(name=layerOpts['valueName'],
            initialTileUrl=initialTileUrl,
            legendUrl=legendUrl))
+
 
 def mapTileKml(request, layerId, level, x, y):
     level = int(level)
@@ -135,7 +147,7 @@ def mapTileKml(request, layerId, level, x, y):
     <viewRefreshMode>onRegion</viewRefreshMode>
   </Link>
 </NetworkLink>
-""" % dict(box=getLatLonAltBox(getTileBounds(subLevel, subX, subY)),
+""" % dict(box=tile.getLatLonAltBox(tile.getTileBounds(subLevel, subX, subY)),
            subUrl=subUrl,
            minLodPixels=settings.XGDS_PLOT_MAP_PIXELS_PER_TILE // 2))
         netLinks = '\n'.join(linkList)
@@ -144,10 +156,10 @@ def mapTileKml(request, layerId, level, x, y):
 
     #tileUrl = request.build_absolute_uri(reverse('mapTileImage', args=[level, x, y]))
     tileUrl = request.build_absolute_uri('%s/%s/%d/%d/%d.png'
-                                         % (DATA_PATH,
+                                         % (MAP_DATA_PATH,
                                             layerId,
                                             level, x, y))
-    bounds = getTileBounds(level, x, y)
+    bounds = tile.getTileBounds(level, x, y)
     minZoom, maxZoom = settings.XGDS_PLOT_MAP_ZOOM_RANGE
     if level < maxZoom - 1:
         maxLodPixels = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE * 2
@@ -183,8 +195,8 @@ def mapTileKml(request, layerId, level, x, y):
   </Style>
 </Folder>
 """ % dict(netLinks=netLinks,
-           llBox=getLatLonBox(bounds),
-           llaBox=getLatLonAltBox(bounds),
+           llBox=tile.getLatLonBox(bounds),
+           llaBox=tile.getLatLonAltBox(bounds),
            tileUrl=tileUrl,
            level=level,
            minLodPixels=minLodPixels,
@@ -198,7 +210,7 @@ def mapTileImage(request, level, x, y):
 
     genTilePath = os.path.join(os.path.dirname(__file__), 'genTile.py')
     coordArgs = ('--west=%s --south=%s --east=%s --north=%s'
-                 % getTileBounds(level, x, y))
+                 % tile.getTileBounds(level, x, y))
     fd, outPath = tempfile.mkstemp('-genTileOutput.png')
     os.close(fd)
     ret = dosys('%s %s %s'
