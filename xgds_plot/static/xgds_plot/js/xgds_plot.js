@@ -72,15 +72,21 @@ $.extend(xgds_plot, {
         return Number(time);
     },
 
-    runNotTooOften: function (timerParent, func, timeoutMs) {
-        if (timerParent.timer != null) {
-            clearTimeout(timerParent.timer);
-            timerParent.timer = null;
-        }
-        timerParent.timer = setTimeout(function () {
-            timerParent.timer = null;
-            func();
-        }, timeoutMs);
+    getBoundingBoxForAxis: function (plot, axis) {
+        var left = axis.box.left, top = axis.box.top,
+        right = left + axis.box.width, bottom = top + axis.box.height;
+
+        // some ticks may stick out, enlarge the box to encompass all ticks
+        var cls = axis.direction + axis.n + 'Axis';
+        plot.getPlaceholder().find('.' + cls + ' .tickLabel').each(function () {
+            var pos = $(this).position();
+            left = Math.min(pos.left, left);
+            top = Math.min(pos.top, top);
+            right = Math.max(Math.round(pos.left) + $(this).outerWidth(), right);
+            bottom = Math.max(Math.round(pos.top) + $(this).outerHeight(), bottom);
+        });
+
+        return { left: left, top: top, width: right - left, height: bottom - top + 5 };
     },
 
     pushTruncate: function (arr, vals, n) {
@@ -251,7 +257,7 @@ $.extend(xgds_plot, {
 
         if (xgds_plot.liveMode) {
             // auto-scroll to current time
-            var liveTimeInterval = xgds_plot.getLiveTimeInterval();
+            var liveTimeInterval = xgds_plot.getLiveTimeInterval(info);
             var xopts = info.plot.getAxes().xaxis.options;
             xopts.min = liveTimeInterval.min;
             xopts.max = liveTimeInterval.max;
@@ -261,9 +267,17 @@ $.extend(xgds_plot, {
         info.plot.draw();
     },
 
-    getLiveTimeInterval: function () {
+    getLiveTimeInterval: function (info) {
         var serverNow = new Date().valueOf() + xgds_plot.timeSkew;
-        return {min: serverNow - settings.XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS,
+        var width = 0;
+        if (info.plot != undefined) {
+            var current = xgds_plot.getIntervalForPlot(info);
+            width = current.max - current.min;
+        }
+        if (width == 0) {
+            width = settings.XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS;
+        }
+        return {min: serverNow - width,
                 max: serverNow};
     },
 
@@ -307,6 +321,8 @@ $.extend(xgds_plot, {
                                  / settings.XGDS_PLOT_SEGMENT_RESOLUTION);
         var maxSegmentLength = (interval.max - interval.min) / minSegmentsInPlot;
         var level = Math.floor(Math.log(maxSegmentLength) / Math.log(2.0));
+        level = Math.max(level, xgds_plot.MIN_SEGMENT_LEVEL);
+        level = Math.min(level, xgds_plot.MAX_SEGMENT_LEVEL - 1);
         return level;
     },
 
@@ -494,7 +510,7 @@ $.extend(xgds_plot, {
         // render plots for the first time
         xgds_plot.updatePlots();
 
-        // enable the plot controls
+        // enable the plot visibility controls
         $.each(xgds_plot.plots, function (i, info) {
             var checkbox = $('#showPlot_' + i);
             checkbox.change(function (info) {
@@ -505,6 +521,34 @@ $.extend(xgds_plot, {
             }(info));
             checkbox.removeAttr('disabled');
         });
+
+        // set up the plot axis controls
+        if (0) {
+        $.each(xgds_plot.plots, function (i, info) {
+            if (info.show) {
+                $.each(info.plot.getAxes(), function (i, axis) {
+                    var box = xgds_plot.getBoundingBoxForAxis(info.plot, axis);
+                    // note: need to set the draworder so the div remains on top
+                    // after the plot gets redrawn
+
+                    // also need to draw the axisTarget the first time the plot is shown
+
+                    $('<div class="axisTarget" style="z-index:10;position:absolute;left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width +  'px;height:' + box.height + 'px"></div>')
+                        .data('axis.direction', axis.direction)
+                        .data('axis.n', axis.n)
+                        .css({ backgroundColor: "#000", opacity: 0, cursor: "pointer" })
+                        .appendTo(info.plot.getPlaceholder())
+                        .hover(
+                            function () { $(this).css({ opacity: 0.10 }) },
+                            function () { $(this).css({ opacity: 0 }) }
+                        )
+                        .click(function () {
+                            console.log("You clicked the " + axis.direction + axis.n + "axis!");
+                        });
+                });
+            }
+        });
+        }
 
         // start updating plots
         setInterval(xgds_plot.updatePlots, 200);
@@ -517,6 +561,20 @@ $.extend(xgds_plot, {
     },
 
     init: function () {
+        xgds_plot.MIN_SEGMENT_LENGTH_MS =
+            settings.XGDS_PLOT_MIN_DATA_INTERVAL_MS
+            * settings.XGDS_PLOT_SEGMENT_RESOLUTION;
+
+        // python range convention -- level is in range [MIN_SEGMENT_LEVEL, MAX_SEGMENT_LEVEL)
+        xgds_plot.MIN_SEGMENT_LEVEL =
+            Math.floor(Math.log(xgds_plot.MIN_SEGMENT_LENGTH_MS)
+                       / Math.log(2));
+
+        xgds_plot.MAX_SEGMENT_LEVEL =
+            (Math.ceil(Math.log(settings.XGDS_PLOT_MAX_SEGMENT_LENGTH_MS)
+                       / Math.log(2))
+             + 1);
+
         $.getJSON(settings.SCRIPT_NAME + 'xgds_plot/meta.json', xgds_plot.handleMasterMeta);
         $.getJSON(settings.SCRIPT_NAME + 'xgds_plot/now/', xgds_plot.handleServerTime);
     }
@@ -544,7 +602,7 @@ xgds_plot.value.Scalar.prototype.collectData = function (info) {
     // collect data from segments
     var interval;
     if (info.plot == undefined) {
-        interval = xgds_plot.getLiveTimeInterval();
+        interval = xgds_plot.getLiveTimeInterval(info);
     } else {
         interval = xgds_plot.getIntervalForPlot(info);
     }

@@ -1,3 +1,6 @@
+/* NOTE: this file contains some minor local changes to support
+   xgds_plot.  Look for the 'NOTE' marker. */
+
 /*
 Flot plugin for adding panning and zooming capabilities to a plot.
 
@@ -231,6 +234,11 @@ Licensed under the MIT License ~ http://threedubmedia.googlecode.com/files/MIT-L
                 };
 
             $.each(plot.getAxes(), function(_, axis) {
+                // NOTE: xgds change -- we want zoom to only affect x axis
+                if (axis.direction == 'y') {
+                    return;
+                }
+
                 var opts = axis.options,
                     min = minmax[axis.direction].min,
                     max = minmax[axis.direction].max,
