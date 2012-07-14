@@ -132,7 +132,7 @@ class SegmentIndex(object):
             self.status['minTime'] = min(minTime, posixTimeMs)
             self.status['numSamples'] += 1
             if self.status['numSamples'] % 100 == 0:
-                print '%d segment update' % self.status['numSamples']
+                print '%d %s segment update' % (self.status['numSamples'], self.valueCode)
         else:
             print ('skipping old (duplicate?) record: posixTimeMs %.3f <= maxTime %.3f'
                    % (posixTimeMs, self.status['maxTime']))
