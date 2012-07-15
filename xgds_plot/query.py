@@ -60,6 +60,7 @@ class Django(TimeSeriesQueryManager):
     def __init__(self, meta):
         self.model = getModelByName(meta['queryModel'])
         self.timestampField = meta['queryTimestampField']
+        self.filterDict = meta.get('queryFilter')
 
     def getValueName(self, valueField):
         return capitalizeFirstLetter(self.model._meta.get_field(valueField).verbose_name)
@@ -70,6 +71,8 @@ class Django(TimeSeriesQueryManager):
             filterKwargs[self.timestampField + '__gt'] = posixTimeMsToUtcDateTime(minTime)
         if maxTime is not None:
             filterKwargs[self.timestampField + '__lte'] = posixTimeMsToUtcDateTime(maxTime)
+        if self.filterDict:
+            filterKwargs.update(self.filterDict)
         return self.model.objects.filter(**filterKwargs).order_by(self.timestampField)
 
     def getTimestamp(self, obj):
