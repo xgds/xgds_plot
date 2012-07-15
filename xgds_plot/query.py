@@ -58,7 +58,7 @@ class Django(TimeSeriesQueryManager):
         self.timestampField = meta['queryTimestampField']
 
     def getValueName(self, valueField):
-        return self.model._meta.get_field(valueField).verbose_name
+        return self.model._meta.get_field(valueField).verbose_name.capitalize()
 
     def getData(self, minTime=None, maxTime=None):
         filterKwargs = {}

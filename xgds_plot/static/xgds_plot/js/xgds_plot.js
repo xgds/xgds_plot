@@ -14,7 +14,7 @@ $.extend(xgds_plot, {
             mode: 'time'
         },
         yaxis: {
-            labelWidth: 35
+            labelWidth: 60
         },
         grid: {
             hoverable: true,
@@ -224,9 +224,14 @@ $.extend(xgds_plot, {
             var raw = data0[0];
             var smooth = data0[1];
             var styledRaw = $.extend(true, {}, raw, info.meta.seriesOpts);
-            var styledSmooth = $.extend(true, {}, smooth,
+            if (info.meta.smoothing != undefined
+                && info.meta.smoothing.seriesOpts != undefined) {
+                styledSmooth = $.extend(true, {}, smooth,
                                         info.meta.smoothing.seriesOpts);
-            data = [styledRaw, styledSmooth];
+                data = [styledRaw, styledSmooth];
+            } else {
+                data = [styledRaw];
+            }
         }
 
         if (info.plot == undefined) {
@@ -641,28 +646,30 @@ xgds_plot.value.Scalar.prototype.initSmoothing = function (info) {
     //this.raw = this.liveData;
     this.raw = this.collectData(info);
 
-    var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
-    this.kernelStart = 0;
     this.smooth = [];
-    var self = this;
-    $.each(self.raw, function (i, ty) {
-        var t = ty[0];
-        var sum = 0.0;
-        var weightSum = 0.0;
-        for (var j = self.kernelStart; j < self.raw.length; j++) {
-            var typ = self.raw[j];
-            var tp = typ[0];
-            if ((t - tp) > (2 * sigmaMs)) {
-                self.kernelStart++;
-                continue;
+    if (this.meta.smoothing != undefined) {
+        var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
+        this.kernelStart = 0;
+        var self = this;
+        $.each(self.raw, function (i, ty) {
+            var t = ty[0];
+            var sum = 0.0;
+            var weightSum = 0.0;
+            for (var j = self.kernelStart; j < self.raw.length; j++) {
+                var typ = self.raw[j];
+                var tp = typ[0];
+                if ((t - tp) > (2 * sigmaMs)) {
+                    self.kernelStart++;
+                    continue;
+                }
+                var yp = typ[1];
+                var weight = xgds_plot.gaussian(tp - t, sigmaMs);
+                sum +=  weight * yp;
+                weightSum += weight;
             }
-            var yp = typ[1];
-            var weight = xgds_plot.gaussian(tp - t, sigmaMs);
-            sum +=  weight * yp;
-            weightSum += weight;
-        }
-        self.smooth.push([t, sum / weightSum]);
-    });
+            self.smooth.push([t, sum / weightSum]);
+        });
+    }
 };
 
 xgds_plot.value.Scalar.prototype.getPlotData = function (info) {
