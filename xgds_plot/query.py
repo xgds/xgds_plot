@@ -45,6 +45,10 @@ class TimeSeriesQueryManager(object):
         raise NotImplementedError()
 
 
+def capitalizeFirstLetter(s):
+    return s[:1].capitalize() + s[1:]
+
+
 class Django(TimeSeriesQueryManager):
     """
     A TimeSeriesQueryManager implementation that retrieves data from a
@@ -58,7 +62,7 @@ class Django(TimeSeriesQueryManager):
         self.timestampField = meta['queryTimestampField']
 
     def getValueName(self, valueField):
-        return self.model._meta.get_field(valueField).verbose_name.capitalize()
+        return capitalizeFirstLetter(self.model._meta.get_field(valueField).verbose_name)
 
     def getData(self, minTime=None, maxTime=None):
         filterKwargs = {}
