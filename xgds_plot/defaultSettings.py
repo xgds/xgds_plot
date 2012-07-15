@@ -34,7 +34,7 @@ XGDS_PLOT_MAP_BBOX = [-155.470761, 19.756284,
                         -155.463084, 19.763668]
 
 # zoom in interval [MIN_ZOOM, MAX_ZOOM)
-XGDS_PLOT_MAP_ZOOM_RANGE = (14, 20)
+XGDS_PLOT_MAP_ZOOM_RANGE = (14, 22)
 
 # Specifies which time series are available for plotting. See example below.
 XGDS_PLOT_TIME_SERIES = ()
