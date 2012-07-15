@@ -19,6 +19,7 @@ from PIL import Image
 
 from geocamUtil import anyjson as json
 from geocamUtil.loader import getClassByName
+from geocamUtil import TimeUtil
 
 from xgds_plot import settings, tile, plotUtil
 
@@ -128,6 +129,10 @@ class TileIndex(object):
         posixTimeMs = self.queryManager.getTimestamp(obj)
         maxTime = self.status['maxTime'] or -99e+20
         pos = self.poseCollector.getLastPositionBeforePosixTimeMs(posixTimeMs)
+        if pos is None:
+            print ('skipping record at time %s, no preceding positions available'
+                   % TimeUtil.posixToUtcDateTime(posixTimeMs / 1000.0))
+            return
         if posixTimeMs > maxTime:
             for tileParams in tile.getTilesOverlappingBounds((pos.longitude, pos.latitude,
                                                               pos.longitude, pos.latitude)):
