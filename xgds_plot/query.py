@@ -60,7 +60,7 @@ class Django(TimeSeriesQueryManager):
     def __init__(self, meta):
         self.model = getModelByName(meta['queryModel'])
         self.timestampField = meta['queryTimestampField']
-        self.filterDict = meta.get('queryFilter')
+        self.filterDict = dict(meta.get('queryFilter', []))
 
     def getValueName(self, valueField):
         return capitalizeFirstLetter(self.model._meta.get_field(valueField).verbose_name)

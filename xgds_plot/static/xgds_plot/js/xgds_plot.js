@@ -306,6 +306,13 @@ $.extend(xgds_plot, {
 
         $.each(xgds_plot.plots, function (i, info) {
             var topic = info.meta.queryModel;
+            if (info.meta.queryFilter != undefined) {
+                $.each(info.meta.queryFilter,
+                       function (i, filterEntry) {
+                           var filterValue = filterEntry[1];
+                           topic += '.' + filterValue;
+                       });
+            }
             var handler = function (info) {
                 return function (zmq, topic, obj) {
                     info.timeSeries.add(obj);
