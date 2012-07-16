@@ -87,5 +87,5 @@ class Django(TimeSeriesQueryManager):
         return posixTimeMs
 
     def subscribeDjango(self, subscriber, func):
-        subscriber.subscribeDjango(self.queryTopic + ':',
+        subscriber.subscribeDjango(self.queryTopic,
                                    func)
