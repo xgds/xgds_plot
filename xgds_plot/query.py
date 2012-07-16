@@ -4,6 +4,8 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+import re
+
 from geocamUtil.loader import getModelByName
 from geocamUtil import TimeUtil
 
@@ -59,9 +61,11 @@ class Django(TimeSeriesQueryManager):
     """
     def __init__(self, meta):
         self.model = getModelByName(meta['queryModel'])
-        self.timestampField = meta['queryTimestampField']
-        self.filterDict = dict(meta.get('queryFilter', []))
 
+        self.timestampField = meta['queryTimestampField']
+        self.timestampMicrosecondsField = meta.get('queryTimestampMicrosecondsField', None)
+
+        self.filterDict = dict(meta.get('queryFilter', []))
         self.queryTopic = meta['queryModel']
         queryFilter = meta.get('queryFilter', [])
         for field, value in queryFilter:
@@ -82,8 +86,12 @@ class Django(TimeSeriesQueryManager):
         return self.model.objects.filter(**filterKwargs).order_by(self.timestampField)
 
     def getTimestamp(self, obj):
-        posixTimeSecs = TimeUtil.utcDateTimeToPosix(getattr(obj, self.timestampField))
+        utcDt = getattr(obj, self.timestampField)
+        posixTimeSecs = TimeUtil.utcDateTimeToPosix(utcDt)
         posixTimeMs = posixTimeSecs * 1000
+        if self.timestampMicrosecondsField is not None:
+            microseconds = getattr(obj, self.timestampMicrosecondsField)
+            posixTimeMs += microseconds / 1000.0
         return posixTimeMs
 
     def subscribeDjango(self, subscriber, func):
