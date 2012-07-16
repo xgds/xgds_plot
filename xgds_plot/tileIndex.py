@@ -72,8 +72,8 @@ class TileIndex(object):
         self.running = False
 
     def start(self):
-        self.parent.subscriber.subscribeDjango(self.meta['queryModel'] + ':',
-                                               lambda topic, obj: self.handleRecord(obj))
+        self.queryManager.subscribeDjango(self.parent.subscriber,
+                                          lambda topic, obj: self.handleRecord(obj))
 
         poseCollectorClass = getClassByName(self.meta['map']['poseCollector'])
         self.poseCollector = poseCollectorClass(self.parent.subscriber)

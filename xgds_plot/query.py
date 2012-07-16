@@ -62,6 +62,12 @@ class Django(TimeSeriesQueryManager):
         self.timestampField = meta['queryTimestampField']
         self.filterDict = dict(meta.get('queryFilter', []))
 
+        self.queryTopic = meta['queryModel']
+        queryFilter = meta.get('queryFilter', [])
+        for field, value in queryFilter:
+            self.queryTopic += '.%s' % value
+        self.queryTopic += ':'
+
     def getValueName(self, valueField):
         return capitalizeFirstLetter(self.model._meta.get_field(valueField).verbose_name)
 
@@ -79,3 +85,7 @@ class Django(TimeSeriesQueryManager):
         posixTimeSecs = TimeUtil.utcDateTimeToPosix(getattr(obj, self.timestampField))
         posixTimeMs = posixTimeSecs * 1000
         return posixTimeMs
+
+    def subscribeDjango(self, subscriber, func):
+        subscriber.subscribeDjango(self.queryTopic + ':',
+                                   func)

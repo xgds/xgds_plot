@@ -89,8 +89,9 @@ class SegmentIndex(object):
                                    SEGMENTS_IN_MEMORY_PER_TIME_SERIES)
         self.delayBox.start()
         if self.subscriber:
-            self.subscriber.subscribeDjango(self.meta['queryModel'] + ':',
-                                            lambda topic, obj: self.handleRecord(obj))
+            self.queryManager.subscribeDjango(self.subscriber,
+                                              lambda topic, obj: self.handleRecord(obj))
+
         self.running = True
 
         self.statusPath = os.path.join(self.segmentDir,

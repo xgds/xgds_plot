@@ -313,6 +313,7 @@ $.extend(xgds_plot, {
                            topic += '.' + filterValue;
                        });
             }
+            topic += ':';
             var handler = function (info) {
                 return function (zmq, topic, obj) {
                     info.timeSeries.add(obj);
