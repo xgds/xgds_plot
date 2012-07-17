@@ -142,26 +142,29 @@ class TileIndex(object):
 
         posixTimeMs = self.queryManager.getTimestamp(obj)
         maxTime = self.status['maxTime'] or -99e+20
+        if posixTimeMs < maxTime:
+            print ('skipping old (duplicate?) record: posixTimeMs %.3f <= maxTime %.3f'
+                   % (posixTimeMs, self.status['maxTime']))
+            return
+
+        self.status['maxTime'] = max(maxTime, posixTimeMs)
+        minTime = self.status['minTime'] or 99e+20
+        self.status['minTime'] = min(minTime, posixTimeMs)
+        self.status['numSamples'] += 1
+        if self.status['numSamples'] % 100 == 0:
+            print '%d %s tile update' % (self.status['numSamples'], self.valueCode)
+
         pos = self.poseCollector.getLastPositionBeforePosixTimeMs(posixTimeMs)
         if pos is None:
             print ('skipping record at time %s, no preceding positions available'
                    % TimeUtil.posixToUtcDateTime(posixTimeMs / 1000.0))
             return
-        if posixTimeMs > maxTime:
-            for tileParams in tile.getTilesOverlappingBounds((pos.longitude, pos.latitude,
-                                                              pos.longitude, pos.latitude)):
-                val = self.valueManager.getValue(obj)
-                self.addSample(tileParams, pos, val)
-                self.parent.delayBox.addJob((self.valueCode, tileParams))
-            self.status['maxTime'] = max(maxTime, posixTimeMs)
-            minTime = self.status['minTime'] or 99e+20
-            self.status['minTime'] = min(minTime, posixTimeMs)
-            self.status['numSamples'] += 1
-            if self.status['numSamples'] % 100 == 0:
-                print '%d %s tile update' % (self.status['numSamples'], self.valueCode)
-        else:
-            print ('skipping old (duplicate?) record: posixTimeMs %.3f <= maxTime %.3f'
-                   % (posixTimeMs, self.status['maxTime']))
+
+        for tileParams in tile.getTilesOverlappingBounds((pos.longitude, pos.latitude,
+                                                          pos.longitude, pos.latitude)):
+            val = self.valueManager.getValue(obj)
+            self.addSample(tileParams, pos, val)
+            self.parent.delayBox.addJob((self.valueCode, tileParams))
 
     def addSample(self, tileParams, pos, val):
         level, _x, _y = tileParams
