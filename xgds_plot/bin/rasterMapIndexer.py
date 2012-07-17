@@ -42,6 +42,8 @@ class RasterMapIndexer(object):
             for valueCode in timeSeriesList:
                 print '  %s' % valueCode
             timeSeriesSet = set(opts.timeSeries.split(','))
+        else:
+            timeSeriesSet = None
 
         self.indexes = {}
         for m in meta.TIME_SERIES:
