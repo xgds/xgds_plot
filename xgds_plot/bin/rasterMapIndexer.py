@@ -35,9 +35,19 @@ class RasterMapIndexer(object):
         self.delayBox = DelayBox(self.writeOutputTile,
                                  maxDelaySeconds=5,
                                  numBuckets=10)
+
+        if opts.timeSeries:
+            timeSeriesList = opts.timeSeries.split(',')
+            print 'indexing only the following time series:'
+            for valueCode in timeSeriesList:
+                print '  %s' % valueCode
+            timeSeriesSet = set(opts.timeSeries.split(','))
+
         self.indexes = {}
         for m in meta.TIME_SERIES:
             if 'map' in m:
+                if timeSeriesSet and m['valueCode'] not in timeSeriesSet:
+                    continue
                 index = TileIndex(m, self)
                 self.indexes[m['valueCode']] = index
 
@@ -73,6 +83,8 @@ def main():
     import optparse
     parser = optparse.OptionParser('usage: %prog')
     ZmqSubscriber.addOptions(parser, 'rasterMapIndexer')
+    parser.add_option('--timeSeries',
+                      help='Specify a comma-separated subset of time series to index')
     parser.add_option('-c', '--clean',
                       action='store_true', default=False,
                       help='Clean out old raster map data at startup')
