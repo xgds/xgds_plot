@@ -126,28 +126,32 @@ class SegmentIndex(object):
             self.indexRecord(obj)
 
     def indexRecord(self, obj):
-        if (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0:
+        if (self.queueMode
+            and (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
             batchProcessDuration = time.time() - self.batchProcessStartTime
             sleepTime = batchProcessDuration * BATCH_SLEEP_TIME_FACTOR
             print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
             time.sleep(sleepTime)
             self.batchProcessStartTime = time.time()
+
         posixTimeMs = self.queryManager.getTimestamp(obj)
         maxTime = self.status['maxTime'] or -99e+20
-        if posixTimeMs > maxTime:
-            for segmentIndex in self.getSegmentIndicesContainingTime(posixTimeMs):
-                val = self.valueManager.getValue(obj)
-                self.addSample(segmentIndex, posixTimeMs, val)
-                self.delayBox.addJob(segmentIndex)
-            self.status['maxTime'] = max(maxTime, posixTimeMs)
-            minTime = self.status['minTime'] or 99e+20
-            self.status['minTime'] = min(minTime, posixTimeMs)
-            self.status['numSamples'] += 1
-            if self.status['numSamples'] % 100 == 0:
-                print '%d %s segment update' % (self.status['numSamples'], self.valueCode)
-        else:
+        if posixTimeMs <= maxTime:
             print ('skipping old (duplicate?) record: posixTimeMs %.3f <= maxTime %.3f'
                    % (posixTimeMs, self.status['maxTime']))
+            return
+
+        self.status['maxTime'] = max(maxTime, posixTimeMs)
+        minTime = self.status['minTime'] or 99e+20
+        self.status['minTime'] = min(minTime, posixTimeMs)
+        self.status['numSamples'] += 1
+        if self.status['numSamples'] % 100 == 0:
+            print '%d %s segment update' % (self.status['numSamples'], self.valueCode)
+
+        for segmentIndex in self.getSegmentIndicesContainingTime(posixTimeMs):
+            val = self.valueManager.getValue(obj)
+            self.addSample(segmentIndex, posixTimeMs, val)
+            self.delayBox.addJob(segmentIndex)
 
     def addSample(self, segmentIndex, posixTimeMs, val):
         segmentKey = self.getKeyFromSegmentIndex(segmentIndex)

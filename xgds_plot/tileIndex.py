@@ -133,7 +133,8 @@ class TileIndex(object):
             self.indexRecord(obj)
 
     def indexRecord(self, obj):
-        if (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0:
+        if (self.queueMode
+            and (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
             batchProcessDuration = time.time() - self.batchProcessStartTime
             sleepTime = batchProcessDuration * BATCH_SLEEP_TIME_FACTOR
             print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
