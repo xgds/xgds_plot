@@ -215,7 +215,7 @@ class SegmentIndex(object):
         # batch process new records that arrived while we were
         # processing the database table.
         print ('--> indexing %d %s samples that came in during batch indexing'
-               % (len(self.inputQueue), self.valueCode))
+               % (len(self.queue), self.valueCode))
         self.flushQueue()
 
         # switch modes to process each new record as it comes in.
