@@ -7,7 +7,9 @@
 import os
 import sys
 from collections import deque
+import time
 
+from django import db
 import numpy
 from scipy.ndimage import filters
 from scipy.misc import pilutil
@@ -28,6 +30,10 @@ N = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE
 DATA_PATH = os.path.join(settings.DATA_DIR,
                          settings.XGDS_PLOT_DATA_SUBDIR,
                          'map')
+
+BATCH_READ_NUM_SAMPLES = 5000
+BATCH_SLEEP_NUM_SAMPLES = 100
+BATCH_SLEEP_TIME_FACTOR = 3
 
 
 class TileIndex(object):
@@ -90,6 +96,7 @@ class TileIndex(object):
             'numTiles': 0
         })
 
+        self.batchProcessStartTime = time.time()
         if self.queueMode:
             self.batchIndex()
 
@@ -126,6 +133,13 @@ class TileIndex(object):
             self.indexRecord(obj)
 
     def indexRecord(self, obj):
+        if (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0:
+            batchProcessDuration = time.time() - self.batchProcessStartTime
+            sleepTime = batchProcessDuration * BATCH_SLEEP_TIME_FACTOR
+            print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
+            time.sleep(sleepTime)
+            self.batchProcessStartTime = time.time()
+
         posixTimeMs = self.queryManager.getTimestamp(obj)
         maxTime = self.status['maxTime'] or -99e+20
         pos = self.poseCollector.getLastPositionBeforePosixTimeMs(posixTimeMs)
@@ -203,12 +217,25 @@ class TileIndex(object):
     def batchIndex(self):
         # index everything in db that comes after the last thing we indexed on
         # the previous run
-        for rec in self.queryManager.getData(minTime=self.status['maxTime']):
-            self.indexRecord(rec)
+        print '--> batch indexing %s' % self.valueCode
+        while 1:
+            recs = self.queryManager.getData(minTime=self.status['maxTime'])
+            n = recs.count()
+            if n == 0:
+                break
+            print '--> %d %s samples remaining' % (n, self.valueCode)
+            for rec in recs[:BATCH_READ_NUM_SAMPLES]:
+                self.indexRecord(rec)
+
+            # avoid django debug log memory leak
+            db.reset_queries()
 
         # batch process new records that arrived while we were
         # processing the database table.
+        print ('--> indexing %d %s samples that came in during batch indexing'
+               % (len(self.inputQueue), self.valueCode))
         self.flushQueue()
 
         # switch modes to process each new record as it comes in.
+        print '--> switching to live data mode'
         self.queueMode = False
