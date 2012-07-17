@@ -10,6 +10,9 @@ import numpy
 import shutil
 import sys
 from collections import deque
+import time
+
+from django import db
 
 from geocamUtil import anyjson as json
 from geocamUtil.loader import getClassByName
@@ -31,7 +34,9 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
 
 SEGMENTS_IN_MEMORY_PER_TIME_SERIES = 100
 
-
+BATCH_READ_NUM_SAMPLES = 100
+BATCH_SLEEP_NUM_SAMPLES = 100
+BATCH_SLEEP_TIME_FACTOR = 3
 
 class SegmentIndex(object):
     @classmethod
@@ -78,7 +83,7 @@ class SegmentIndex(object):
                                        'plot',
                                        self.valueCode)
         self.delayBox = DelayBox(self.writeOutputSegment,
-                                 maxDelaySeconds=1,
+                                 maxDelaySeconds=5,
                                  numBuckets=10)
 
         self.queue = deque()
@@ -121,6 +126,12 @@ class SegmentIndex(object):
             self.indexRecord(obj)
 
     def indexRecord(self, obj):
+        if (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0:
+            batchProcessDuration = time.time() - self.batchProcessStartTime
+            sleepTime = batchProcessDuration * BATCH_SLEEP_TIME_FACTOR
+            print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
+            time.sleep(sleepTime)
+            self.batchProcessStartTime = time.time()
         posixTimeMs = self.queryManager.getTimestamp(obj)
         maxTime = self.status['maxTime'] or -99e+20
         if posixTimeMs > maxTime:
@@ -184,14 +195,29 @@ class SegmentIndex(object):
             self.indexRecord(self.queue.popleft())
 
     def batchIndex(self):
+        self.batchProcessStartTime = time.time()
+
         # index everything in db that comes after the last thing we indexed on
         # the previous run
-        for rec in self.queryManager.getData(minTime=self.status['maxTime']):
-            self.indexRecord(rec)
+        print '--> batch indexing %s' % self.valueCode
+        while 1:
+            recs = self.queryManager.getData(minTime=self.status['maxTime'])
+            n = recs.count()
+            if n == 0:
+                break
+            print '--> %d %s samples remaining' % (n, self.valueCode)
+            for rec in recs[:BATCH_READ_NUM_SAMPLES]:
+                self.indexRecord(rec)
+
+            # avoid django debug log memory leak
+            db.reset_queries()
 
         # batch process new records that arrived while we were
         # processing the database table.
+        print ('--> indexing %d %s samples that came in during batch indexing'
+               % (len(self.inputQueue), self.valueCode))
         self.flushQueue()
 
         # switch modes to process each new record as it comes in.
+        print '--> switching to live data mode'
         self.queueMode = False
