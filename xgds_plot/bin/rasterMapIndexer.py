@@ -33,7 +33,7 @@ class RasterMapIndexer(object):
         self.cacheDir = os.path.join(DATA_PATH, 'cache')
         self.store = None
         self.delayBox = DelayBox(self.writeOutputTile,
-                                 maxDelaySeconds=1,
+                                 maxDelaySeconds=5,
                                  numBuckets=10)
         self.indexes = {}
         for m in meta.TIME_SERIES:
