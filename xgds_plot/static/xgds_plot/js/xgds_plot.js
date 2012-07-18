@@ -515,7 +515,9 @@ $.extend(xgds_plot, {
                         infoDiv: $('#plotInfo_' + i),
                         show: meta.show,
                         timeSeries: timeSeries,
-                        plot: null}
+                        plot: null,
+                        drag: {}
+                       }
             xgds_plot.plots.push(info);
             xgds_plot.setupPlotHandlers(info);
         });
@@ -536,15 +538,12 @@ $.extend(xgds_plot, {
         });
 
         // set up the plot axis controls
-        if (0) {
         $.each(xgds_plot.plots, function (i, info) {
             if (info.show) {
                 $.each(info.plot.getAxes(), function (i, axis) {
                     var box = xgds_plot.getBoundingBoxForAxis(info.plot, axis);
-                    // note: need to set the draworder so the div remains on top
-                    // after the plot gets redrawn
 
-                    // also need to draw the axisTarget the first time the plot is shown
+                    // FIX: also need to draw axisTarget on plots that are turned on by user
 
                     $('<div class="axisTarget" style="z-index:10;position:absolute;left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width +  'px;height:' + box.height + 'px"></div>')
                         .data('axis.direction', axis.direction)
@@ -553,20 +552,74 @@ $.extend(xgds_plot, {
                         .appendTo(info.plot.getPlaceholder())
                         .hover(
                             function () { $(this).css({ opacity: 0.10 }) },
-                            function () { $(this).css({ opacity: 0 }) }
-                        )
-                        .click(function () {
-                            console.log("You clicked the " + axis.direction + axis.n + "axis!");
-                        });
+                            function () { $(this).css({ opacity: 0 }) })
+                        .bind("dragstart",
+                              function (info, axis) {
+                                  return function (evt) {
+                                      return xgds_plot.handleAxisDragStart(evt, info, axis);
+                                  }
+                              }(info, axis))
+                        .bind("drag",
+                              function (info, axis) {
+                                  return function (evt) {
+                                      return xgds_plot.handleAxisDrag(evt, info, axis);
+                                  }
+                              }(info, axis));
                 });
             }
         });
-        }
 
         // start updating plots
         setInterval(xgds_plot.updatePlots, 200);
         setInterval(xgds_plot.getSegmentDataCoveringPlots, 200);
     }, // function handleMasterMeta
+
+    handleAxisDragStart: function (evt, info, axis) {
+        if (axis.direction == 'x') {
+            info.drag.x = {
+                start: evt.offsetX,
+                axisRange: $.extend(true, {}, info.plot.getAxes().xaxis.options)
+            };
+        } else if (axis.direction == 'y') {
+            info.drag.y = {
+                start: evt.offsetY,
+                axisRange: $.extend(true, {}, info.plot.getAxes().yaxis.options)
+            };
+        }
+    },
+
+    handleAxisDrag: function (evt, info, axis) {
+        console.log('shiftPressed:' + evt.shiftKey);
+        var axes = info.plot.getAxes();
+        var axis, dragInfo, delta, pixelSize;
+        if (axis.direction == 'x') {
+            axis = axes.xaxis;
+            dragInfo = info.drag.x;
+            delta = evt.offsetX - dragInfo.start;
+            pixelSize = info.plot.width();
+        } else if (axis.direction == 'y') {
+            axis = axes.yaxis;
+            dragInfo = info.drag.y;
+            delta = -(evt.offsetY - dragInfo.start);
+            pixelSize = info.plot.height();
+        }
+        var valueSize = (dragInfo.axisRange.max - dragInfo.axisRange.min);
+        if (evt.shiftKey) {
+            // zoom
+            var zoomFactor = Math.pow(2, -delta / 30);
+            var halfSize = valueSize * zoomFactor / 2.0;;
+            var center = (dragInfo.axisRange.min + dragInfo.axisRange.max) / 2.0;
+            axis.options.min = center - halfSize;
+            axis.options.max = center + halfSize;
+        } else {
+            // pan
+            var motion = -delta * valueSize / pixelSize;
+            axis.options.min = dragInfo.axisRange.min + motion;
+            axis.options.max = dragInfo.axisRange.max + motion;
+        }
+        xgds_plot.setLiveMode(false);
+        xgds_plot.matchXRange(info.plot);
+    },
 
     handleServerTime: function (serverTime) {
         xgds_plot.timeSkew = serverTime - new Date().valueOf();
