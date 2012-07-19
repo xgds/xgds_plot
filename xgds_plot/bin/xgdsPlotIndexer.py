@@ -13,16 +13,27 @@ from geocamUtil.zmq.subscriber import ZmqSubscriber
 from geocamUtil.zmq.util import zmqLoop, getTimestampFields
 
 from xgds_plot import settings
-from xgds_plot.meta import TIME_SERIES
+from xgds_plot.meta import TIME_SERIES, TIME_SERIES_LOOKUP
 from xgds_plot.segmentIndex import SegmentIndex
 
 
 class XgdsPlotIndexer(object):
     def __init__(self, opts):
         self.opts = opts
+        if self.opts.timeSeries:
+            names = self.opts.timeSeries.split(',')
+            for name in names:
+                if name not in TIME_SERIES_LOOKUP:
+                    print ('unknown time series %s, expected one of %s'
+                           % (name, TIME_SERIES_LOOKUP.keys()))
+                    sys.exit(1)
+            timeSeriesList = [TIME_SERIES_LOOKUP[name]
+                              for name in names]
+        else:
+            timeSeriesList = TIME_SERIES
         self.subscriber = ZmqSubscriber(**ZmqSubscriber.getOptionValues(self.opts))
         self.indexes = {}
-        for meta in TIME_SERIES:
+        for meta in timeSeriesList:
             index = SegmentIndex(meta, self.subscriber)
             self.indexes[meta['valueCode']] = index
 
@@ -53,6 +64,8 @@ def main():
     parser.add_option('-q', '--quit',
                       action='store_true', default=False,
                       help='Quit after initial indexing is complete')
+    parser.add_option('--timeSeries',
+                      help='Comma-separated list of time series to index (by default index all)')
     opts, args = parser.parse_args()
     if args:
         parser.error('expected no arguments')
