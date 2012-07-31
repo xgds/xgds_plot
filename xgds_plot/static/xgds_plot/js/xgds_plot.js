@@ -35,16 +35,20 @@ $.extend(xgds_plot, {
 
     haveNewData: false,
 
+    rangeChanged: false,
+
     timeSkew: 0.0,
 
     liveMode: null,
 
     segmentCache: {},
 
-    timeRange: {
+    dataTimeRange: {
         min: 99e+20,
         max: -99e+20
     },
+
+    plotTimeRange: null,
 
     epochToString: function (epoch) {
         var d = new Date(epoch);
@@ -186,6 +190,7 @@ $.extend(xgds_plot, {
 
     matchXRange: function (masterPlot) {
         var masterXopts = masterPlot.getAxes().xaxis.options;
+        xgds_plot.plotTimeRange = masterXopts;
         $.each(xgds_plot.plots, function (i, info) {
             var slavePlot = info.plot;
             if (slavePlot != null && slavePlot != masterPlot) {
@@ -218,13 +223,14 @@ $.extend(xgds_plot, {
         });
 
         xgds_plot.haveNewData = false;
+        xgds_plot.rangeChanged = false;
     },
 
     updatePlot: function (info) {
         if (!info.show) return;
 
         var data;
-        if (info.plot == undefined || xgds_plot.haveNewData) {
+        if (info.plot == undefined || xgds_plot.haveNewData || xgds_plot.rangeChanged) {
             var data0 = info.timeSeries.getPlotData(info);
             var raw = data0[0];
             var smooth = data0[1];
@@ -251,7 +257,7 @@ $.extend(xgds_plot, {
                                 info.meta.plotOpts);
             if (!xgds_plot.liveMode) {
                 $.extend(true, opts, {
-                    xaxis: xgds_plot.timeRange
+                    xaxis: xgds_plot.dataTimeRange
                 });
             }
 
@@ -261,11 +267,12 @@ $.extend(xgds_plot, {
                 return function () {
                     xgds_plot.setLiveMode(false);
                     xgds_plot.matchXRange(info.plot);
+                    xgds_plot.rangeChanged = true;
                 }
             }(info));
         } else {
             // update old plot
-            if (xgds_plot.haveNewData) {
+            if (xgds_plot.haveNewData || xgds_plot.rangeChanged) {
                 info.plot.setData(data);
             }
         }
@@ -273,6 +280,7 @@ $.extend(xgds_plot, {
         if (xgds_plot.liveMode) {
             // auto-scroll to current time
             var liveTimeInterval = xgds_plot.getLiveTimeInterval(info);
+            xgds_plot.plotTimeRange = liveTimeInterval;
             var xopts = info.plot.getAxes().xaxis.options;
             xopts.min = liveTimeInterval.min;
             xopts.max = liveTimeInterval.max;
@@ -292,7 +300,7 @@ $.extend(xgds_plot, {
     getLiveTimeInterval: function (info) {
         var serverNow = xgds_plot.getServerTime();
         var width = 0;
-        if (info.plot != undefined) {
+        if (info != undefined && info.plot != undefined) {
             var current = xgds_plot.getIntervalForPlot(info);
             width = current.max - current.min;
         }
@@ -347,6 +355,13 @@ $.extend(xgds_plot, {
         $('#socketStatus').html('disconnected');
     },
 
+    getBucketSizeForXaxisRange: function (interval) {
+        var level = xgds_plot.getSegmentLevelForInterval(interval);
+        var segmentLength = Math.pow(2.0, level);
+        var bucketSize = segmentLength / settings.XGDS_PLOT_SEGMENT_RESOLUTION;
+        return bucketSize;
+    },
+
     getSegmentLevelForInterval: function (interval) {
         var minSegmentsInPlot = (settings.XGDS_PLOT_MIN_DISPLAY_RESOLUTION
                                  / settings.XGDS_PLOT_SEGMENT_RESOLUTION);
@@ -393,10 +408,10 @@ $.extend(xgds_plot, {
                   function (info) {
                       return function (result) {
                           info.status = result;
-                          xgds_plot.timeRange.min = Math.min(xgds_plot.timeRange.min,
-                                                             info.status.minTime);
-                          xgds_plot.timeRange.max = Math.max(xgds_plot.timeRange.max,
-                                                             info.status.maxTime);
+                          xgds_plot.dataTimeRange.min = Math.min(xgds_plot.dataTimeRange.min,
+                                                                 info.status.minTime);
+                          xgds_plot.dataTimeRange.max = Math.max(xgds_plot.dataTimeRange.max,
+                                                                 info.status.maxTime);
                           xgds_plot.checkIfStatusComplete();
                       };
                   }(info));
@@ -436,12 +451,20 @@ $.extend(xgds_plot, {
                       };
                   }(segment))
         .error(function (segment) {
-            var updatedSegmentData = xgds_plot.getSegmentDataCache(segment);
-            if (updatedSegmentData == undefined) {
-                updatedSegmentData = {};
-            }
-            updatedSegmentData.timestamp = new Date().valueOf();
-            xgds_plot.setSegmentDataCache(segment, updatedSegmentData);
+            return function (evt) {
+                if (evt.status == 200) {
+                    console.log('unknown error in handling segment data at url'
+                                + ' ' + xgds_plot.getSegmentUrl(segment));
+                    console.log('check segment file for json parse errors?');
+                }
+
+                var updatedSegmentData = xgds_plot.getSegmentDataCache(segment);
+                if (updatedSegmentData == undefined) {
+                    updatedSegmentData = {};
+                }
+                updatedSegmentData.timestamp = new Date().valueOf();
+                xgds_plot.setSegmentDataCache(segment, updatedSegmentData);
+            };
         }(segment));
     },
 
@@ -452,15 +475,7 @@ $.extend(xgds_plot, {
     },
 
     getSegmentDataCoveringPlots: function () {
-        var firstVisiblePlot = null;
-        $.each(xgds_plot.plots, function (i, info) {
-            if (info.show) {
-                firstVisiblePlot = info;
-                return false;
-            }
-        });
-        var interval = xgds_plot.getIntervalForPlot(firstVisiblePlot);
-        xgds_plot.getSegmentDataCoveringInterval(interval);
+        xgds_plot.getSegmentDataCoveringInterval(xgds_plot.plotTimeRange);
     },
 
     getSegmentDataCoveringInterval: function (interval) {
@@ -482,6 +497,28 @@ $.extend(xgds_plot, {
         } else {
             $('#plotContainer_' + info.index).css('display', 'none');
         }
+    },
+
+    insertDiscontinuities: function (data, maxContinuousDataGap) {
+        if (data.length == 0) {
+            return data;
+        }
+
+        var prev = data[0][0];
+        var result = [];
+        $.each(data, function (i, ty) {
+            var t = ty[0];
+            var dt = t - prev;
+
+            if (dt > maxContinuousDataGap) {
+                result.push([t, null]);
+            }
+            result.push(ty);
+
+            prev = t;
+        });
+
+        return result;
     },
 
     handleMasterMeta: function (inMeta) {
@@ -538,6 +575,13 @@ $.extend(xgds_plot, {
     },
 
     handleStatusComplete: function () {
+        // set initial plot time range
+        if (xgds_plot.liveMode) {
+            xgds_plot.plotTimeRange = xgds_plot.getLiveTimeInterval();
+        } else {
+            xgds_plot.plotTimeRange = xgds_plot.dataTimeRange;
+        }
+
         // create sidebar show/hide controls for each plot
         var plotControlsHtml = [];
         $.each(xgds_plot.plots, function (i, info) {
@@ -707,6 +751,7 @@ $.extend(xgds_plot, {
         }
         xgds_plot.setLiveMode(false);
         xgds_plot.matchXRange(info.plot);
+        xgds_plot.rangeChanged = true;
     },
 
     handleServerTime: function (serverTime) {
@@ -812,7 +857,6 @@ xgds_plot.value.Scalar.prototype.collectData = function (info) {
 };
 
 xgds_plot.value.Scalar.prototype.initSmoothing = function (info) {
-    //this.raw = this.liveData;
     var tndValues = this.collectData(info);
 
     var self = this;
@@ -844,6 +888,20 @@ xgds_plot.value.Scalar.prototype.initSmoothing = function (info) {
             }
             self.smooth.push([t, numSum / denomSum]);
         });
+    }
+
+    if (this.meta.plotOpts != undefined
+        && this.meta.plotOpts.xaxis != undefined
+        && this.meta.plotOpts.xaxis.maxContinuousDataGap != undefined) {
+        var maxContinuousDataGap = this.meta.plotOpts.xaxis.maxContinuousDataGap;
+        if (xgds_plot.plotTimeRange != null) {
+            var bucketSize = xgds_plot.getBucketSizeForXaxisRange(xgds_plot.plotTimeRange);
+            maxContinuousDataGap = Math.max(maxContinuousDataGap, 2 * bucketSize);
+        }
+        this.raw = xgds_plot.insertDiscontinuities(this.raw, maxContinuousDataGap);
+        if (this.meta.smoothing != undefined) {
+            this.smooth = xgds_plot.insertDiscontinuities(this.smooth, maxContinuousDataGap);
+        }
     }
 };
 
