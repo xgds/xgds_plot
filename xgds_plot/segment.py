@@ -20,14 +20,16 @@ MAX_SEGMENT_LEVEL = int(math.ceil(math.log(settings.XGDS_PLOT_MAX_SEGMENT_LENGTH
 
 LAST_DENOM_ZERO_WARNING_TIME = 0
 
+HUGE_VALUE = 99e+20
+
 class ScalarSegment(object):
     def __init__(self):
         self.n = settings.XGDS_PLOT_SEGMENT_RESOLUTION
         self.timeSum = numpy.zeros(self.n)
         self.sum = numpy.zeros(self.n)
         self.sqsum = numpy.zeros(self.n)
-        self.min = numpy.zeros(self.n) + 99e+20
-        self.max = numpy.zeros(self.n) - 99e+20
+        self.min = numpy.zeros(self.n) + HUGE_VALUE
+        self.max = numpy.zeros(self.n) - HUGE_VALUE
         self.count = numpy.zeros(self.n, dtype='l')
 
     def addSample(self, bucketIndex, posixTimeMs, val):
@@ -100,15 +102,25 @@ class RatioSegment(ScalarSegment):
             self.min[bucketIndex] = min(self.min[bucketIndex], val)
             self.max[bucketIndex] = max(self.max[bucketIndex], val)
 
-
     def getMean(self, bucketIndex):
-        return float(self.numSum[bucketIndex]) / self.denomSum[bucketIndex]
+        if self.denomSum[bucketIndex] == 0:
+            return None
+        else:
+            return float(self.numSum[bucketIndex]) / self.denomSum[bucketIndex]
 
-    def getMeanNumerator(self, bucketIndex):
-        return float(self.numSum[bucketIndex]) / self.count[bucketIndex]
+    def getMin(self, bucketIndex):
+        minVal = self.min[bucketIndex]
+        if minVal == HUGE_VALUE:
+            return None
+        else:
+            return minVal
 
-    def getMeanDenominator(self, bucketIndex):
-        return float(self.denomSum[bucketIndex]) / self.count[bucketIndex]
+    def getMax(self, bucketIndex):
+        maxVal = self.max[bucketIndex]
+        if maxVal == -HUGE_VALUE:
+            return None
+        else:
+            return maxVal
 
     def getJsonObj(self):
         fields = ['timestamp',
@@ -122,8 +134,8 @@ class RatioSegment(ScalarSegment):
         data = [[self.getMeanTimestamp(i),
                  self.getMean(i),
                  self.getVariance(i),
-                 self.min[i],
-                 self.max[i],
+                 self.getMin(i),
+                 self.getMax(i),
                  self.count[i],
                  self.numSum[i],
                  self.denomSum[i]]
