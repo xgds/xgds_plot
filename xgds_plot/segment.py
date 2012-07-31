@@ -117,16 +117,16 @@ class RatioSegment(ScalarSegment):
                   'min',
                   'max',
                   'count',
-                  'meanNumerator',
-                  'meanDenominator']
+                  'numSum',
+                  'denomSum']
         data = [[self.getMeanTimestamp(i),
                  self.getMean(i),
                  self.getVariance(i),
                  self.min[i],
                  self.max[i],
                  self.count[i],
-                 self.getMeanNumerator(i),
-                 self.getMeanDenominator(i)]
+                 self.numSum[i],
+                 self.denomSum[i]]
                 for i in xrange(self.n)
                 if self.count[i] > 0]
         return {'fields': fields,

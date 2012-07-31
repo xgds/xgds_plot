@@ -749,17 +749,26 @@ $.extend(xgds_plot, {
 
 /**********************************************************************/
 
-xgds_plot.value.Scalar.prototype.getValue = function (rec) {
+xgds_plot.value.Scalar.prototype.getValuesFromLiveDataRecord = function (rec) {
+    // return [timestamp, valueSum, count]
+    // each live data message only holds one data value so count is 1
     return [xgds_plot.parseIso8601(rec[this.meta.queryTimestampField]),
-            rec[this.meta.valueField]];
+            rec[this.meta.valueField],
+            1];
 };
 
-xgds_plot.value.Scalar.prototype.add = function (rec) {
-    var ty = this.getValue(rec);
-    var t = ty[0];
-    var y = ty[1];
+xgds_plot.value.Scalar.prototype.getValuesFromSegmentBucket = function (row) {
+    // return [timestamp, valueSum, count]
+    var timestamp = row[0];
+    var mean = row[1];
+    var count = row[5];
+    return [timestamp, mean * count, count];
+}
 
-    xgds_plot.pushTruncate(this.liveData, [t, y], xgds_plot.MAX_NUM_DATA_POINTS);
+xgds_plot.value.Scalar.prototype.add = function (rec) {
+    xgds_plot.pushTruncate(this.liveData,
+                           this.getValuesFromLiveDataRecord(rec),
+                           xgds_plot.MAX_NUM_DATA_POINTS);
 };
 
 xgds_plot.value.Scalar.prototype.collectData = function (info) {
@@ -773,14 +782,13 @@ xgds_plot.value.Scalar.prototype.collectData = function (info) {
         interval = xgds_plot.getIntervalForPlot(info);
     }
     var segments = xgds_plot.getSegmentsCoveringInterval(info, interval);
+    var self = this;
     $.each(segments, function (i, segment) {
         var segmentData = xgds_plot.getSegmentDataCache(segment);
         if (segmentData != undefined && segmentData.data != undefined) {
             var data = segmentData.data;
-            $.each(data, function (i, row) {
-                var timestamp = row[0];
-                var mean = row[1];
-                result.push([timestamp, mean]);
+            $.each(data, function (i, bucket) {
+                result.push(self.getValuesFromSegmentBucket(bucket));
             });
         }
     });
@@ -805,30 +813,36 @@ xgds_plot.value.Scalar.prototype.collectData = function (info) {
 
 xgds_plot.value.Scalar.prototype.initSmoothing = function (info) {
     //this.raw = this.liveData;
-    this.raw = this.collectData(info);
+    var tndValues = this.collectData(info);
+
+    var self = this;
+    this.raw = [];
+    $.each(tndValues, function (i, tnd) {
+        self.raw.push([tnd[0], tnd[1] / tnd[2]]);
+    });
 
     this.smooth = [];
     if (this.meta.smoothing != undefined) {
         var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
         this.kernelStart = 0;
-        var self = this;
-        $.each(self.raw, function (i, ty) {
-            var t = ty[0];
-            var sum = 0.0;
-            var weightSum = 0.0;
-            for (var j = self.kernelStart; j < self.raw.length; j++) {
-                var typ = self.raw[j];
-                var tp = typ[0];
+        $.each(tndValues, function (i, tnd) {
+            var t = tnd[0];
+            var numSum = 0.0;
+            var denomSum = 0.0;
+            for (var j = self.kernelStart; j < tndValues.length; j++) {
+                var tndp = tndValues[j];
+                var tp = tndp[0];
                 if ((t - tp) > (2 * sigmaMs)) {
                     self.kernelStart++;
                     continue;
                 }
-                var yp = typ[1];
+                var nump = tndp[1];
+                var denomp = tndp[2];
                 var weight = xgds_plot.gaussian(tp - t, sigmaMs);
-                sum +=  weight * yp;
-                weightSum += weight;
+                numSum += weight * nump;
+                denomSum += weight * denomp;
             }
-            self.smooth.push([t, sum / weightSum]);
+            self.smooth.push([t, numSum / denomSum]);
         });
     }
 };
@@ -840,58 +854,21 @@ xgds_plot.value.Scalar.prototype.getPlotData = function (info) {
 
 /**********************************************************************/
 
-xgds_plot.value.Ratio.prototype.getValue = function (rec) {
+xgds_plot.value.Ratio.prototype.getValuesFromLiveDataRecord = function (rec) {
+    // return [timestamp, numSum, denomSum]
     return [xgds_plot.parseIso8601(rec[this.meta.queryTimestampField]),
             rec[this.meta.valueFields[0]],
             rec[this.meta.valueFields[1]]];
 };
 
-xgds_plot.value.Ratio.prototype.add = function (rec) {
-    var tnd = this.getValue(rec);
-    var t = tnd[0];
-    var ynum = tnd[1];
-    var ydenom = tnd[2];
+xgds_plot.value.Ratio.prototype.getValuesFromSegmentBucket = function (row) {
+    var timestamp = row[0];
+    var numSum = row[6];
+    var denomSum = row[7];
+    return [timestamp, numSum, denomSum];
+}
 
-    //xgds_plot.pushTruncate(this.numerator, [t, ynum], xgds_plot.MAX_NUM_DATA_POINTS);
-    //xgds_plot.pushTruncate(this.denominator, [t, ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
-    xgds_plot.pushTruncate(this.liveData, [t, ynum/ydenom], xgds_plot.MAX_NUM_DATA_POINTS);
-};
-
+xgds_plot.value.Ratio.prototype.add = xgds_plot.value.Scalar.prototype.add;
 xgds_plot.value.Ratio.prototype.collectData = xgds_plot.value.Scalar.prototype.collectData;
-
-// FIX: figure out how to make smoothing work properly with ratios and segment data
 xgds_plot.value.Ratio.prototype.initSmoothing = xgds_plot.value.Scalar.prototype.initSmoothing;
-
-/*
-xgds_plot.value.Ratio.prototype.initSmoothing = function (info) {
-    this.raw = this.collectData(info);
-
-    var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
-    this.kernelStart = 0;
-    this.smooth = [];
-    var self = this;
-    $.each(self.raw, function (i, ty) {
-        var t = ty[0];
-        var numSum = 0.0;
-        var denomSum = 0.0;
-        for (var j = self.kernelStart; j < self.raw.length; j++) {
-            var tynump = self.numerator[j];
-            var tp = tynump[0];
-            if ((t - tp) > (2 * sigmaMs)) {
-                self.kernelStart++;
-                continue;
-            }
-            var ynump = tynump[1];
-            var tydenomp = self.denominator[j];
-            var ydenomp = tydenomp[1];
-            var weight = xgds_plot.gaussian(tp - t, sigmaMs);
-            numSum +=  weight * ynump;
-            denomSum += weight * ydenomp;
-        }
-        self.smooth.push([t, numSum / denomSum]);
-    });
-};
-*/
-
 xgds_plot.value.Ratio.prototype.getPlotData = xgds_plot.value.Scalar.prototype.getPlotData;
-
