@@ -9,7 +9,11 @@ import time
 from cStringIO import StringIO
 
 from django.shortcuts import render_to_response
-from django.http import HttpResponse, HttpResponseRedirect, HttpResponseForbidden, Http404
+from django.http import HttpResponse, \
+     HttpResponseRedirect, \
+     HttpResponseForbidden, \
+     Http404, \
+     HttpResponseBadRequest
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 
@@ -41,6 +45,22 @@ def now(request):
                         mimetype='text/plain; charset="utf-8"')
 
 def plots(request):
+    timeSeriesNamesString = request.GET.get('s')
+
+    requestParams = {}
+
+    if timeSeriesNamesString is not None:
+        if timeSeriesNamesString:
+            timeSeriesNames = timeSeriesNamesString.split(',')
+        else:
+            timeSeriesNames = []
+        requestParams['timeSeriesNames'] = timeSeriesNames
+
+        # sanity check
+        for name in timeSeriesNames:
+            if name not in meta.TIME_SERIES_LOOKUP:
+                return HttpResponseBadRequest('unknown time series %s' % name)
+
     exportFields = ('DATA_URL',
                     'XGDS_PLOT_DATA_SUBDIR',
                     'SCRIPT_NAME',
@@ -53,7 +73,8 @@ def plots(request):
                     )
     exportSettings = dict(((k, getattr(settings, k)) for k in exportFields))
     return render_to_response('xgds_plot/plots.html',
-                              {'settings': dumps(exportSettings)},
+                              {'settings': dumps(exportSettings),
+                               'requestParams': dumps(requestParams)},
                               context_instance=RequestContext(request))
 
 def mapIndexKml(request):

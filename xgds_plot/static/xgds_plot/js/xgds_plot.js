@@ -412,8 +412,14 @@ $.extend(xgds_plot, {
     },
 
     getSegmentDataCoveringPlots: function () {
-        var plot1 = xgds_plot.plots[0];
-        var interval = xgds_plot.getIntervalForPlot(plot1);
+        var firstVisiblePlot = null;
+        $.each(xgds_plot.plots, function (i, info) {
+            if (info.show) {
+                firstVisiblePlot = info;
+                return false;
+            }
+        });
+        var interval = xgds_plot.getIntervalForPlot(firstVisiblePlot);
         xgds_plot.getSegmentDataCoveringInterval(interval);
     },
 
@@ -438,21 +444,43 @@ $.extend(xgds_plot, {
     handleMasterMeta: function (inMeta) {
         xgds_plot.masterMeta = inMeta;
 
-        // create live mode control
-        $('#liveModeControl').html('<input type="checkbox" checked="checked" id="liveModeCheckBox">'
-                                   + '</input>'
-                                   + '<label for="liveModeCheckBox">'
-                                   + 'Live</label>');
-        $('#liveModeCheckBox').change(function () {
-            var checked = $(this).attr('checked');
-            xgds_plot.liveMode = checked;
+        // create data structures: plots and plotNameLookup
+        xgds_plot.plots = [];
+        xgds_plot.plotNameLookup = {};
+        $.each(xgds_plot.masterMeta, function (i, meta) {
+            var info = {index: i,
+                        meta: meta};
+            xgds_plot.plots.push(info);
+            xgds_plot.plotNameLookup[meta.valueCode] = info;
         });
 
-        // create show/hide controls for each plot
+        console.log('timeSeriesNames:');
+        console.log(requestParams.timeSeriesNames);
+        console.log('plotNameLookup:');
+        console.log(xgds_plot.plotNameLookup);
+
+        // set plot visibility
+        if (requestParams.timeSeriesNames == undefined) {
+            // set visibility based on meta
+            $.each(xgds_plot.plots, function (i, info) {
+                info.show = info.meta.show;
+            });
+        } else {
+            // set visibility based on requestParams
+            $.each(xgds_plot.plots, function (i, info) {
+                info.show = false;
+            });
+            $.each(requestParams.timeSeriesNames, function (i, timeSeriesName) {
+                var info = xgds_plot.plotNameLookup[timeSeriesName];
+                info.show = true;
+            });
+        }
+
+        // create sidebar show/hide controls for each plot
         var plotControlsHtml = [];
-        $.each(xgds_plot.masterMeta, function (i, meta) {
+        $.each(xgds_plot.plots, function (i, info) {
             var checked;
-            if (meta.show) {
+            if (info.show) {
                 checked = 'checked="checked" ';
             } else {
                 checked = '';
@@ -466,22 +494,22 @@ $.extend(xgds_plot, {
                       + '>'
                       + '</input>'
                       + '<label for="showPlot_' + i + '">'
-                      + meta.valueName + '</label></div>');
+                      + info.meta.valueName + '</label></div>');
         });
         $('#plotControls').html(plotControlsHtml.join(""));
 
         // create a div for each plot
         var plotsHtml = [];
-        $.each(xgds_plot.masterMeta, function (i, meta) {
+        $.each(xgds_plot.plots, function (i, info) {
             var style;
-            if (meta.show) {
+            if (info.show) {
                 style = '';
             } else {
                 style = 'style="display: none"';
             }
             plotsHtml.push('<div id="plotContainer_' + i + '"' + style + '>'
                            + '<div id="plotLabel_' + i + '">'
-                           + meta.valueName
+                           + info.meta.valueName
                            + '<span class="plotInfo" id="plotInfo_' + i + '"></span>'
                            + '</div>'
                            + '<div id="plot_' + i + '" class="flotPlot"></div>'
@@ -490,6 +518,7 @@ $.extend(xgds_plot, {
         $("#plots").html(plotsHtml.join(""));
 
         // connect to data feed
+        // FIX: should subscribe based on plot visibility
         var zmqUrl = settings
             .XGDS_ZMQ_WEB_SOCKET_URL
             .replace('{{host}}', window.location.hostname);
@@ -499,26 +528,22 @@ $.extend(xgds_plot, {
                                   autoReconnect: true});
         zmq.start();
 
+        // extend the xgds_plot.plots array
         var timeSeriesTypeRegistry = {
             'xgds_plot.value.Ratio': xgds_plot.value.Ratio,
             'xgds_plot.value.Scalar': xgds_plot.value.Scalar
         };
-
-        // initialize the xgds_plot.plots array
-        $.each(xgds_plot.masterMeta, function (i, meta) {
-            var timeSeriesType = timeSeriesTypeRegistry[meta.valueType];
-            var timeSeries = new timeSeriesType(meta);
-            var info = {index: i,
-                        meta: meta,
-                        plotDiv: $('#plot_' + i),
-                        containerDiv: $('#plotContainer_' + i),
-                        infoDiv: $('#plotInfo_' + i),
-                        show: meta.show,
-                        timeSeries: timeSeries,
-                        plot: null,
-                        drag: {}
-                       }
-            xgds_plot.plots.push(info);
+        $.each(xgds_plot.plots, function (i, info) {
+            var timeSeriesType = timeSeriesTypeRegistry[info.meta.valueType];
+            var timeSeries = new timeSeriesType(info.meta);
+            $.extend(info,
+                     {plotDiv: $('#plot_' + i),
+                      containerDiv: $('#plotContainer_' + i),
+                      infoDiv: $('#plotInfo_' + i),
+                      timeSeries: timeSeries,
+                      plot: null,
+                      drag: {}
+                     });
             xgds_plot.setupPlotHandlers(info);
         });
 
@@ -640,6 +665,16 @@ $.extend(xgds_plot, {
             (Math.ceil(Math.log(settings.XGDS_PLOT_MAX_SEGMENT_LENGTH_MS)
                        / Math.log(2))
              + 1);
+
+        // create live mode control
+        $('#liveModeControl').html('<input type="checkbox" checked="checked" id="liveModeCheckBox">'
+                                   + '</input>'
+                                   + '<label for="liveModeCheckBox">'
+                                   + 'Live</label>');
+        $('#liveModeCheckBox').change(function () {
+            var checked = $(this).attr('checked');
+            xgds_plot.liveMode = checked;
+        });
 
         $.getJSON(settings.SCRIPT_NAME + 'xgds_plot/meta.json', xgds_plot.handleMasterMeta);
         $.getJSON(settings.SCRIPT_NAME + 'xgds_plot/now/', xgds_plot.handleServerTime);
