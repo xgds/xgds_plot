@@ -69,7 +69,7 @@ def plots(request):
                     'XGDS_PLOT_SEGMENT_RESOLUTION',
                     'XGDS_PLOT_MIN_DISPLAY_RESOLUTION',
                     'XGDS_PLOT_MIN_DATA_INTERVAL_MS',
-                    'XGDS_PLOT_MAX_SEGMENT_LENGTH_MS'
+                    'XGDS_PLOT_MAX_SEGMENT_LENGTH_MS',
                     'XGDS_PLOT_LIVE_MODE_DEFAULT',
                     'XGDS_PLOT_CHECK_FOR_NEW_DATA',
                     )
