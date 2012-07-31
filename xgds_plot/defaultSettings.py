@@ -28,6 +28,12 @@ XGDS_PLOT_PRETTY_PRINT_JSON_SEGMENTS = False
 # in live mode, display this much history by default
 XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS = 120 * 1000
 
+# whether to start in live mode by default when plots screen is opened
+XGDS_PLOT_LIVE_MODE_DEFAULT = True
+
+# when no new data is coming in, constantly checking for new data is wasteful
+XGDS_PLOT_CHECK_FOR_NEW_DATA = True
+
 XGDS_PLOT_MAP_TILE_EPS = 1e-9
 XGDS_PLOT_MAP_PIXELS_PER_TILE = 256
 XGDS_PLOT_MAP_BBOX = [-155.470761, 19.756284,

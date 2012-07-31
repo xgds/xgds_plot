@@ -82,6 +82,11 @@ class RatioSegment(ScalarSegment):
 
         num, denom = vals
 
+        self.timeSum[bucketIndex] += posixTimeMs
+        self.numSum[bucketIndex] += num
+        self.denomSum[bucketIndex] += denom
+        self.count[bucketIndex] += 1
+
         if denom == 0:
             now = time.time()
             if now - LAST_DENOM_ZERO_WARNING_TIME > 5:
@@ -89,10 +94,40 @@ class RatioSegment(ScalarSegment):
                 LAST_DENOM_ZERO_WARNING_TIME = now
         else:
             val = float(num) / denom
-            super(RatioSegment, self).addSample(bucketIndex, posixTimeMs, val)
 
-        self.numSum[bucketIndex] += num
-        self.denomSum[bucketIndex] += denom
+            self.sum[bucketIndex] += val
+            self.sqsum[bucketIndex] += val * val
+            self.min[bucketIndex] = min(self.min[bucketIndex], val)
+            self.max[bucketIndex] = max(self.max[bucketIndex], val)
+
 
     def getMean(self, bucketIndex):
         return float(self.numSum[bucketIndex]) / self.denomSum[bucketIndex]
+
+    def getMeanNumerator(self, bucketIndex):
+        return float(self.numSum[bucketIndex]) / self.count[bucketIndex]
+
+    def getMeanDenominator(self, bucketIndex):
+        return float(self.denomSum[bucketIndex]) / self.count[bucketIndex]
+
+    def getJsonObj(self):
+        fields = ['timestamp',
+                  'mean',
+                  'variance',
+                  'min',
+                  'max',
+                  'count',
+                  'meanNumerator',
+                  'meanDenominator']
+        data = [[self.getMeanTimestamp(i),
+                 self.getMean(i),
+                 self.getVariance(i),
+                 self.min[i],
+                 self.max[i],
+                 self.count[i],
+                 self.getMeanNumerator(i),
+                 self.getMeanDenominator(i)]
+                for i in xrange(self.n)
+                if self.count[i] > 0]
+        return {'fields': fields,
+                'data': data}

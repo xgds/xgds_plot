@@ -70,6 +70,8 @@ def plots(request):
                     'XGDS_PLOT_MIN_DISPLAY_RESOLUTION',
                     'XGDS_PLOT_MIN_DATA_INTERVAL_MS',
                     'XGDS_PLOT_MAX_SEGMENT_LENGTH_MS'
+                    'XGDS_PLOT_LIVE_MODE_DEFAULT',
+                    'XGDS_PLOT_CHECK_FOR_NEW_DATA',
                     )
     exportSettings = dict(((k, getattr(settings, k)) for k in exportFields))
     return render_to_response('xgds_plot/plots.html',

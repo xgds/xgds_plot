@@ -37,9 +37,14 @@ $.extend(xgds_plot, {
 
     timeSkew: 0.0,
 
-    liveMode: true,
+    liveMode: null,
 
     segmentCache: {},
+
+    timeRange: {
+        min: 99e+20,
+        max: -99e+20
+    },
 
     epochToString: function (epoch) {
         var d = new Date(epoch);
@@ -244,6 +249,11 @@ $.extend(xgds_plot, {
                                 },
                                 xgds_plot.BASE_PLOT_OPTS,
                                 info.meta.plotOpts);
+            if (!xgds_plot.liveMode) {
+                $.extend(true, opts, {
+                    xaxis: xgds_plot.timeRange
+                });
+            }
 
             var plot = $.plot(info.plotDiv, data, opts);
             info.plot = plot;
@@ -272,8 +282,15 @@ $.extend(xgds_plot, {
         info.plot.draw();
     },
 
+    getServerTime: function (t) {
+        if (t == undefined) {
+            t = new Date().valueOf();
+        }
+        return t + xgds_plot.timeSkew;
+    },
+
     getLiveTimeInterval: function (info) {
-        var serverNow = new Date().valueOf() + xgds_plot.timeSkew;
+        var serverNow = xgds_plot.getServerTime();
         var width = 0;
         if (info.plot != undefined) {
             var current = xgds_plot.getIntervalForPlot(info);
@@ -304,6 +321,7 @@ $.extend(xgds_plot, {
     onopen: function (zmq) {
         $('#socketStatus').html('connected');
 
+        // FIX: should subscribe/unsubscribe based on plot visibility
         $.each(xgds_plot.plots, function (i, info) {
             var topic = info.meta.queryModel;
             if (info.meta.queryFilter != undefined) {
@@ -362,13 +380,35 @@ $.extend(xgds_plot, {
                 + segment.index + '.json');
     },
 
+    getStatusUrl: function (info) {
+        return (settings.DATA_URL
+                + settings.XGDS_PLOT_DATA_SUBDIR
+                + 'plot/'
+                + info.meta.valueCode + '/'
+                + 'status.json');
+    },
+
+    requestStatus: function (info) {
+        $.getJSON(xgds_plot.getStatusUrl(info),
+                  function (info) {
+                      return function (result) {
+                          info.status = result;
+                          xgds_plot.timeRange.min = Math.min(xgds_plot.timeRange.min,
+                                                             info.status.minTime);
+                          xgds_plot.timeRange.max = Math.max(xgds_plot.timeRange.max,
+                                                             info.status.maxTime);
+                          xgds_plot.checkIfStatusComplete();
+                      };
+                  }(info));
+    },
+
     loadSegmentData: function (segment) {
-        var current = xgds_plot.getSegmentDataCache(segment);
-        if (current == undefined) {
+        var cached = xgds_plot.getSegmentDataCache(segment);
+        if (cached == undefined) {
             xgds_plot.requestSegmentData(segment);
         } else {
             var now = new Date().valueOf();
-            if (now - current.timestamp > 5000) {
+            if (settings.XGDS_PLOT_CHECK_FOR_NEW_DATA && now - cached.timestamp > 5000) {
                 xgds_plot.requestSegmentData(segment);
             }
         }
@@ -425,6 +465,9 @@ $.extend(xgds_plot, {
 
     getSegmentDataCoveringInterval: function (interval) {
         $.each(xgds_plot.plots, function (i, info) {
+            if (!info.show) {
+                return true; // continue to next iteration
+            }
             var segments = xgds_plot.getSegmentsCoveringInterval(info, interval);
             $.each(segments, function (j, segment) {
                 xgds_plot.loadSegmentData(segment);
@@ -454,11 +497,6 @@ $.extend(xgds_plot, {
             xgds_plot.plotNameLookup[meta.valueCode] = info;
         });
 
-        console.log('timeSeriesNames:');
-        console.log(requestParams.timeSeriesNames);
-        console.log('plotNameLookup:');
-        console.log(xgds_plot.plotNameLookup);
-
         // set plot visibility
         if (requestParams.timeSeriesNames == undefined) {
             // set visibility based on meta
@@ -476,6 +514,30 @@ $.extend(xgds_plot, {
             });
         }
 
+        // request status of each time series
+        $.each(xgds_plot.plots, function (i, info) {
+            if (info.show) {
+                xgds_plot.requestStatus(info);
+            }
+        });
+    },
+
+    checkIfStatusComplete: function () {
+        var allHaveStatus = true;
+
+        $.each(xgds_plot.plots, function (i, info) {
+            if (info.show && info.status == undefined) {
+                allHaveStatus = false;
+                return false; // break
+            }
+        });
+
+        if (allHaveStatus) {
+            xgds_plot.handleStatusComplete();
+        }
+    },
+
+    handleStatusComplete: function () {
         // create sidebar show/hide controls for each plot
         var plotControlsHtml = [];
         $.each(xgds_plot.plots, function (i, info) {
@@ -517,18 +579,19 @@ $.extend(xgds_plot, {
         });
         $("#plots").html(plotsHtml.join(""));
 
-        // connect to data feed
-        // FIX: should subscribe based on plot visibility
-        var zmqUrl = settings
-            .XGDS_ZMQ_WEB_SOCKET_URL
-            .replace('{{host}}', window.location.hostname);
-        var zmq = new ZmqManager(zmqUrl,
-                                 {onopen: xgds_plot.onopen,
-                                  onclose: xgds_plot.onclose,
-                                  autoReconnect: true});
-        zmq.start();
+        if (settings.XGDS_PLOT_CHECK_FOR_NEW_DATA) {
+            // connect to live data feed
+            var zmqUrl = settings
+                .XGDS_ZMQ_WEB_SOCKET_URL
+                .replace('{{host}}', window.location.hostname);
+            var zmq = new ZmqManager(zmqUrl,
+                                     {onopen: xgds_plot.onopen,
+                                      onclose: xgds_plot.onclose,
+                                      autoReconnect: true});
+            zmq.start();
+        }
 
-        // extend the xgds_plot.plots array
+        // fill in remaining fields of each xgds_plot.plots entry
         var timeSeriesTypeRegistry = {
             'xgds_plot.value.Ratio': xgds_plot.value.Ratio,
             'xgds_plot.value.Scalar': xgds_plot.value.Scalar
@@ -614,7 +677,7 @@ $.extend(xgds_plot, {
     },
 
     handleAxisDrag: function (evt, info, axis) {
-        console.log('shiftPressed:' + evt.shiftKey);
+        //console.log('shiftPressed:' + evt.shiftKey);
         var axes = info.plot.getAxes();
         var axis, dragInfo, delta, pixelSize;
         if (axis.direction == 'x') {
@@ -655,6 +718,8 @@ $.extend(xgds_plot, {
         xgds_plot.MIN_SEGMENT_LENGTH_MS =
             settings.XGDS_PLOT_MIN_DATA_INTERVAL_MS
             * settings.XGDS_PLOT_SEGMENT_RESOLUTION;
+
+        xgds_plot.liveMode = settings.XGDS_PLOT_LIVE_MODE_DEFAULT;
 
         // python range convention -- level is in range [MIN_SEGMENT_LEVEL, MAX_SEGMENT_LEVEL)
         xgds_plot.MIN_SEGMENT_LEVEL =
