@@ -32,7 +32,10 @@ def compactFloats(obj):
 def rmIfPossible(path):
     print '  deleting %s' % path
     try:
-        shutil.rmtree(path)
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.unlink(path)
     except OSError, oe:
         print >> sys.stderr, 'Failed to remove %s: %s' % (path, oe)
 
