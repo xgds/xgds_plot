@@ -179,10 +179,10 @@ class RatioTile(ScalarTile):
         alpha[alpha < 0.1] = 0
         alpha[alpha > 1.0] = 1
 
-        denomSumBlurred = filters.gaussian_filter(self.numSum, self.sigmaPixels)
+        denomSumBlurred = filters.gaussian_filter(self.denomSum, self.sigmaPixels)
         denomSumBlurred[alpha < 0.1] = 1  # avoid divide by zero
 
-        result = numSumBlurred / (denomSumBlurred + 1e-3)
+        result = numSumBlurred / (denomSumBlurred + 1e-20)
         result[alpha < 0.1] = 0
 
         return result, alpha
