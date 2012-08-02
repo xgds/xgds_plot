@@ -42,6 +42,9 @@ XGDS_PLOT_MAP_BBOX = [-155.470761, 19.756284,
 # zoom in interval [MIN_ZOOM, MAX_ZOOM)
 XGDS_PLOT_MAP_ZOOM_RANGE = (14, 22)
 
+# batch sleep avoids overloading server; larger values sleep more
+XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR = 3
+
 # Specifies which time series are available for plotting. See example below.
 XGDS_PLOT_TIME_SERIES = ()
 

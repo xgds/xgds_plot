@@ -36,7 +36,6 @@ SEGMENTS_IN_MEMORY_PER_TIME_SERIES = 100
 
 BATCH_READ_NUM_SAMPLES = 5000
 BATCH_SLEEP_NUM_SAMPLES = 100
-BATCH_SLEEP_TIME_FACTOR = 3
 
 class SegmentIndex(object):
     @classmethod
@@ -129,9 +128,10 @@ class SegmentIndex(object):
         if (self.queueMode
             and (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
             batchProcessDuration = time.time() - self.batchProcessStartTime
-            sleepTime = batchProcessDuration * BATCH_SLEEP_TIME_FACTOR
-            print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
-            time.sleep(sleepTime)
+            if settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR > 0:
+                sleepTime = batchProcessDuration * settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR
+                print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
+                time.sleep(sleepTime)
             self.batchProcessStartTime = time.time()
 
         posixTimeMs = self.queryManager.getTimestamp(obj)
