@@ -72,12 +72,12 @@
 {% block scripts %}
   {{ block.super }}
 
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.navigate.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.symbol.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}external/js/jquery.flot.threshold.min.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}geocamUtil/js/zmq.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ MEDIA_URL }}xgds_plot/js/xgds_plot.js"></script>
+  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}external/js/jquery.flot.js"></script>
+  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}external/js/jquery.flot.navigate.js"></script>
+  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}external/js/jquery.flot.symbol.js"></script>
+  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}external/js/jquery.flot.threshold.min.js"></script>
+  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}geocamUtil/js/zmq.js"></script>
+  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}xgds_plot/js/xgds_plot.js"></script>
 {% endblock %}
 
 {% block jsSetVars %}
