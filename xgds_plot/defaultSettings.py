@@ -106,3 +106,9 @@ XGDS_PLOT_TIME_SERIES = {
 }
 
 """
+
+# xgds_plot assumes its input data is in the UTC time zone and
+# produces its indexes with UTC timestamps. this offset allows you to
+# change the time zone for the plot display only.
+XGDS_PLOT_TIME_OFFSET_HOURS = 0
+XGDS_PLOT_TIME_ZONE_NAME = 'UTC'

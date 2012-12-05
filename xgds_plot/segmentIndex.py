@@ -112,11 +112,16 @@ class SegmentIndex(object):
         if self.queueMode:
             self.batchIndex()
 
-    def stop(self):
+    def flushStore(self):
+        print '--> flushing store for %s' % self.valueCode
         if self.running:
             self.store.sync()
-            self.delayBox.stop()
             self.statusStore.write(self.status)
+
+    def stop(self):
+        if self.running:
+            self.flushStore()
+            self.delayBox.stop()
             self.running = False
 
     def handleRecord(self, obj):
@@ -226,6 +231,8 @@ class SegmentIndex(object):
         print ('--> indexing %d %s samples that came in during batch indexing'
                % (len(self.queue), self.valueCode))
         self.flushQueue()
+
+        self.flushStore()
 
         # switch modes to process each new record as it comes in.
         print '--> switching to live data mode'

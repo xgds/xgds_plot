@@ -56,6 +56,14 @@ $.extend(xgds_plot, {
         return dateString.replace(/ GMT$/, '');
     },
 
+    displayFromUtcTime: function (t) {
+	return t + settings.XGDS_PLOT_TIME_OFFSET_HOURS * 3600 * 1000;
+    },
+
+    utcFromDisplayTime: function (t) {
+	return t - settings.XGDS_PLOT_TIME_OFFSET_HOURS * 3600 * 1000;
+    },
+
     parseIso8601: function (string) {
         var regexp = "([0-9]{4})(-([0-9]{2})(-([0-9]{2})" +
             "(T([0-9]{2}):([0-9]{2})(:([0-9]{2})(\.([0-9]+))?)?" +
@@ -185,7 +193,8 @@ $.extend(xgds_plot, {
         var tminSpan = $('#tmin');
         var tmaxSpan = $('#tmax');
         tminSpan.html(xgds_plot.epochToString(xopts.min));
-        tmaxSpan.html(xgds_plot.epochToString(xopts.max) + ' UTC');
+        tmaxSpan.html(xgds_plot.epochToString(xopts.max) + ' ' +
+		      settings.XGDS_PLOT_TIME_ZONE_NAME);
     },
 
     matchXRange: function (masterPlot) {
@@ -363,6 +372,7 @@ $.extend(xgds_plot, {
     },
 
     getSegmentLevelForInterval: function (interval) {
+        /* note: can be either displayInterval *or* utcInterval, will get same result */
         var minSegmentsInPlot = (settings.XGDS_PLOT_MIN_DISPLAY_RESOLUTION
                                  / settings.XGDS_PLOT_SEGMENT_RESOLUTION);
         var maxSegmentLength = (interval.max - interval.min) / minSegmentsInPlot;
@@ -372,11 +382,15 @@ $.extend(xgds_plot, {
         return level;
     },
 
-    getSegmentsCoveringInterval: function (info, interval) {
-        var level = xgds_plot.getSegmentLevelForInterval(interval);
+    getSegmentsCoveringInterval: function (info, displayInterval) {
+	var utcInterval = {
+	    min: xgds_plot.utcFromDisplayTime(displayInterval.min),
+	    max: xgds_plot.utcFromDisplayTime(displayInterval.max)
+	};
+        var level = xgds_plot.getSegmentLevelForInterval(utcInterval);
         var segmentLength = Math.pow(2, level);
-        var indexMin = Math.floor(interval.min / segmentLength);
-        var indexMax = Math.ceil(interval.max / segmentLength) + 1;
+        var indexMin = Math.floor(utcInterval.min / segmentLength);
+        var indexMax = Math.ceil(utcInterval.max / segmentLength) + 1;
         var result = [];
         for (var i = indexMin; i < indexMax; i++) {
             result.push({info: info,
@@ -807,7 +821,7 @@ xgds_plot.value.Scalar.prototype.getValuesFromSegmentBucket = function (row) {
     var timestamp = row[0];
     var mean = row[1];
     var count = row[5];
-    return [timestamp, mean * count, count];
+    return [xgds_plot.displayFromUtcTime(timestamp), mean * count, count];
 }
 
 xgds_plot.value.Scalar.prototype.add = function (rec) {
@@ -870,7 +884,7 @@ xgds_plot.value.Scalar.prototype.initSmoothing = function (info) {
         var sigmaMs = this.meta.smoothing.sigmaSeconds * 1000;
         this.kernelStart = 0;
         $.each(tndValues, function (i, tnd) {
-            var t = tnd[0];
+   	    var t = tnd[0];
             var numSum = 0.0;
             var denomSum = 0.0;
             for (var j = self.kernelStart; j < tndValues.length; j++) {
