@@ -107,6 +107,7 @@ class SegmentIndex(object):
             'numSamples': 0,
             'numSegments': 0
         })
+        self.statusStore.write(self.status)
 
         if self.queueMode:
             self.batchIndex()
@@ -150,6 +151,8 @@ class SegmentIndex(object):
 
         for segmentIndex in self.getSegmentIndicesContainingTime(posixTimeMs):
             val = self.valueManager.getValue(obj)
+            if val is None:
+                continue
             self.addSample(segmentIndex, posixTimeMs, val)
             self.delayBox.addJob(segmentIndex)
 
@@ -215,6 +218,8 @@ class SegmentIndex(object):
 
             # avoid django debug log memory leak
             db.reset_queries()
+
+            self.statusStore.write(self.status)
 
         # batch process new records that arrived while we were
         # processing the database table.
