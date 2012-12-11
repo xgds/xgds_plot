@@ -7,6 +7,9 @@
 import os
 import time
 from cStringIO import StringIO
+import re
+import datetime
+import iso8601
 
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, \
@@ -22,13 +25,16 @@ from geocamUtil import KmlUtil
 
 from xgds_plot import settings
 try:
-    from xgds_plot import meta, tile
+    from xgds_plot import meta, tile, profiles
 except ImportError:
     print 'warning: scipy is not available; some views will not work'
 
 MAP_DATA_PATH = os.path.join(settings.DATA_URL,
                          settings.XGDS_PLOT_DATA_SUBDIR,
                          'map')
+
+FLOAT_REGEX = re.compile(r'^-?\d+(\.\d*)?$')
+
 
 
 def dumps(obj):
@@ -256,3 +262,45 @@ def mapTileImage(request, level, x, y):
         pass
     return HttpResponse(file(img, 'r').read(),
                         mimetype=mimetype)
+
+
+def parseTime(timeString):
+    # exact match 'now'
+    now = datetime.datetime.utcnow()
+    if timeString == 'now':
+        return now
+
+    # match a float
+    m = FLOAT_REGEX.search(timeString)
+    if m:
+        f = float(timeString)
+        if f < 1e+6:
+            # interpret small values as delta hours from now
+            dt = datetime.timedelta(hours=f)
+            return now + dt
+        else:
+            # interpret large values as Java-style millisecond epoch time
+            return datetime.datetime.utcfromtimestamp(f * 1e-3)
+
+    # full ISO 8601 format datetime
+    return iso8601.parse_date(timeString)
+
+
+def profileRender(request, layerId):
+    widthPix = int(request.GET.get('w', settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION))
+    heightPix = int(request.GET.get('h', settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION))
+    minTime = parseTime(request.GET.get('start', '-72'))
+    maxTime = parseTime(request.GET.get('end', 'now'))
+    imageData = profiles.getProfileContourPlotImageData(layerId,
+                                                        widthPix=widthPix,
+                                                        heightPix=heightPix,
+                                                        minTime=minTime,
+                                                        maxTime=maxTime)
+    return HttpResponse(imageData,
+                        mimetype='image/png')
+
+
+def profilesPage(request):
+    minTime = parseTime(request.GET.get('start', '-72'))
+    maxTime = parseTime(request.GET.get('end', 'now'))
+    return render_to_response('xgds_plot/profiles.html')

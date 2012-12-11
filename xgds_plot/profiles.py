@@ -9,6 +9,10 @@ import datetime
 import calendar
 import iso8601
 import logging
+try:
+    from cStringIO import StringIO
+except ImportError:
+    from StringIO import StringIO
 
 import numpy
 import scipy
@@ -34,13 +38,6 @@ for profileMeta in settings.XGDS_PLOT_PROFILES:
     profile.filter = profileMeta['queryFilter']
     PROFILE_LOOKUP[profile.valueField] = profile
 
-EPS = 1e-5
-
-DEPTH_INTERVAL_METERS = 1
-MAX_DEPTH_METERS = 25
-
-TIME_INTERVAL_DAYS = 0.25
-
 
 def pigeonHole(xp, yp, xi, yi):
     x0 = xi[0, 0]
@@ -50,8 +47,10 @@ def pigeonHole(xp, yp, xi, yi):
     ix = int((xp - x0) / dx + 0.5)
     iy = int((yp - y0) / dy + 0.5)
     ny, nx = xi.shape
-    if ((0 <= ix < nx)
+    if ((ix < nx)
         and (0 <= iy < ny)):
+        if ix < 0:
+            ix = 0
         return iy, ix
     else:
         return None
@@ -150,7 +149,8 @@ def getContourPlotImage(out, x, y, z,
                         sizePixels):
     xpix, ypix = sizePixels
     xinch, yinch = xpix / 100, ypix / 100
-    matplotlib.pylab.figure(figsize=(xinch, yinch), dpi=100)
+    #fig = matplotlib.pylab.figure(figsize=(xinch, yinch))
+    fig = matplotlib.pylab.figure()
     matplotlib.pylab.contourf(xi, yi, zi, 256)
     xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
     ax = matplotlib.pylab.gca()
@@ -159,27 +159,50 @@ def getContourPlotImage(out, x, y, z,
     # ax.set_xticklabels(ax.get_xticklabels(), fontdict={'size': 8})
     matplotlib.pyplot.xlabel(labelx, fontsize=8)
     matplotlib.pyplot.ylabel(labely, fontsize=8)
+    matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'xticklabels'),
+                          fontsize='xx-small')
+    matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'yticklabels'),
+                          fontsize='xx-small')
     # matplotlib.pyplot.tight_layout()
     matplotlib.pylab.colorbar()
-    matplotlib.pylab.scatter(x, y, s=1, c='k')
-    matplotlib.pyplot.savefig(out, format='png')
+    matplotlib.pylab.scatter(x, y, s=0.5, c='k')
+    matplotlib.pylab.setp(fig, figwidth=xinch, figheight=yinch)
+    matplotlib.pyplot.savefig(out,
+                              format='png',
+                              bbox_inches='tight',
+                              dpi=100,
+                              pad_inches=0.05,
+                              # transparent=True,
+                              )
 
 
 def firstcaps(val):
     return val[0].upper() + val[1:]
 
 
-def writeProfileContourPlotImage(out, layerId, minTime=None, maxTime=None):
+def numFromDateOrNone(dt):
+    if dt:
+        return matplotlib.dates.date2num(dt)
+    else:
+        return None
+
+
+def writeProfileContourPlotImage(out, layerId,
+                                 widthPix, heightPix,
+                                 minTime=None,
+                                 maxTime=None):
     profile = PROFILE_LOOKUP[layerId]
 
     if minTime:
-        paddedMinTime = minTime - datetime.timedelta(days=1)
+        paddedMinTime = minTime - datetime.timedelta(days=7)
     else:
         paddedMinTime = None
 
     rawRecs = getRawRecs(profile, paddedMinTime, maxTime)
     t, z, v = numpy.array(getValueTuples(profile, rawRecs))
-    ti, zi = getMeshGrid(t, z)
+    ti, zi = getMeshGrid(t, z,
+                         numFromDateOrNone(minTime),
+                         numFromDateOrNone(maxTime))
     vi = griddata(t, z, v, ti, zi)
 
     sizePixels = (settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION,
@@ -199,13 +222,23 @@ def writeProfileContourPlotImage(out, layerId, minTime=None, maxTime=None):
 def saveProfileContourPlotImage(layerId, minTime=None, maxTime=None):
     logging.info('saving contour plot image to %s', layerId)
     out = open('%s.png' % layerId, 'wb')
-    writeProfileContourPlotImage(out, layerId, minTime, maxTime)
+    writeProfileContourPlotImage(out, layerId,
+                                 widthPix=settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION,
+                                 heightPix=settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION,
+                                 minTime=minTime,
+                                 maxTime=maxTime)
     out.close()
 
 
-def getProfileContourPlotImageData(layerId, minTime=None, maxTime=None):
+def getProfileContourPlotImageData(layerId,
+                                   widthPix,
+                                   heightPix,
+                                   minTime=None,
+                                   maxTime=None):
     out = StringIO()
-    writeProfileContourPlot(out, layerId, minTime, maxTime)
+    writeProfileContourPlotImage(out, layerId,
+                                 widthPix, heightPix,
+                                 minTime, maxTime)
     return out.getvalue()
 
 

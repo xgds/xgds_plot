@@ -112,3 +112,5 @@ XGDS_PLOT_TIME_SERIES = {
 # change the time zone for the plot display only.
 XGDS_PLOT_TIME_OFFSET_HOURS = 0
 XGDS_PLOT_TIME_ZONE_NAME = 'UTC'
+
+XGDS_PLOT_PROFILES = ()

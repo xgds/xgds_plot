@@ -32,4 +32,12 @@ urlpatterns = patterns(
     url(r'^mapTile/(?P<layerId>[^/]+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
         'mapTileKml', {},
         'xgds_plot_mapTileKml'),
+
+    url(r'^profile/(?P<layerId>[^\.]*)\.png$',
+        'profileRender', {},
+        'xgds_plot_profileRender'),
+
+    url(r'^profiles/',
+        'profilesPage', {},
+        'xgds_plot_profiles'),
 )
