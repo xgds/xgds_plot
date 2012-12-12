@@ -37,6 +37,10 @@ class Profile(object):
     pass
 
 
+def firstcaps(val):
+    return val[0].upper() + val[1:]
+
+
 class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
     def __call__(self, x, pos=0):
         scale = float( self._locator._get_unit() )
@@ -60,14 +64,24 @@ class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
         return self._formatter(x, pos)
 
 
+PROFILES = []
 PROFILE_LOOKUP = {}
 for profileMeta in settings.XGDS_PLOT_PROFILES:
     profile = Profile()
     profile.valueField = profileMeta['valueField']
+    profile.valueCode = profile.valueField
     profile.model = getModelByName(profileMeta['queryModel'])
     profile.timestampField = profileMeta['queryTimestampField']
     profile.zField = profileMeta['queryZField']
     profile.filter = profileMeta['queryFilter']
+
+    fields = profile.model._meta._field_name_cache
+    fieldLookup = dict([(f.name, f) for f in fields])
+    profile.name = firstcaps(fieldLookup[profile.valueField].verbose_name)
+    profile.timeLabel = firstcaps(fieldLookup[profile.timestampField].verbose_name)
+    profile.zLabel = firstcaps(fieldLookup[profile.zField].verbose_name)
+
+    PROFILES.append(profile)
     PROFILE_LOOKUP[profile.valueField] = profile
 
 
@@ -226,10 +240,6 @@ def getContourPlotImage(out, x, y, z,
                               )
 
 
-def firstcaps(val):
-    return val[0].upper() + val[1:]
-
-
 def numFromDateOrNone(dt):
     if dt:
         return matplotlib.dates.date2num(dt)
@@ -257,15 +267,10 @@ def writeProfileContourPlotImage(out, layerId,
 
     sizePixels = (settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION,
                   settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION)
-    fields = profile.model._meta._field_name_cache
-    fieldLookup = dict([(f.name, f) for f in fields])
-    labelT = (firstcaps(fieldLookup[profile.timestampField].verbose_name)
-              + ' (%s)' % settings.XGDS_PLOT_TIME_ZONE_NAME)
-    labelZ = firstcaps(fieldLookup[profile.zField].verbose_name)
     getContourPlotImage(out,
                         t, z, v,
                         ti, zi, vi,
-                        labelT, labelZ,
+                        profile.timeLabel, profile.zLabel,
                         sizePixels)
 
 
