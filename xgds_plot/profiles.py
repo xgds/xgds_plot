@@ -17,6 +17,7 @@ except ImportError:
 import numpy
 import scipy
 import matplotlib
+import pytz
 
 # must set matplotlib mode before importing pylab to suppress errors
 matplotlib.interactive(False)
@@ -186,7 +187,7 @@ def getContourPlotImage(out, x, y, z,
     xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
     ax = matplotlib.pylab.gca()
 
-    ax.xaxis_date(tz='UTC')
+    ax.xaxis_date(tz=pytz.utc)
     fmt = ShortDateFormatter(ax.xaxis.get_major_locator())
     ax.xaxis.set_major_formatter(fmt)
 
