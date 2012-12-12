@@ -28,6 +28,8 @@
 
 <div style="margin-top: 5px;">&nbsp;</div>
 
+<div>{{ minDisplayTime }} .. {{ maxDisplayTime }} {{ displayTimeZone }}</div>
+
 {% for p in profiles %}
 <div style="margin-top: 5px;">{{ p.name }}</div>
 <img src="{% url xgds_plot_profileRender p.valueCode %}"/>

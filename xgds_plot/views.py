@@ -303,8 +303,12 @@ def profileRender(request, layerId):
 def profilesPage(request):
     minTime = parseTime(request.GET.get('start', '-72'))
     maxTime = parseTime(request.GET.get('end', 'now'))
+    offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     return render_to_response('xgds_plot/profiles.html',
-                              {'minTime': minTime,
-                               'maxTime': maxTime,
+                              {'minTime': minTime.isoformat() + 'Z',
+                               'maxTime': maxTime.isoformat() + 'Z',
+                               'minDisplayTime': minTime + offset,
+                               'maxDisplayTime': maxTime + offset,
+                               'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,
                                'profiles': profiles.PROFILES},
                               context_instance=RequestContext(request))
