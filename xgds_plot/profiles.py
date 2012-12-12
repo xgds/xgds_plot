@@ -32,6 +32,8 @@ from geocamUtil.loader import getModelByName
 
 from xgds_plot import settings
 
+TIME_OFFSET = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+TIME_OFFSET_DAYS = float(settings.XGDS_PLOT_TIME_OFFSET_HOURS) / 24
 
 class Profile(object):
     pass
@@ -146,8 +148,6 @@ def getRawRecs(profile, minTime=None, maxTime=None):
 
 
 def getValueTuples(profile, rawRecs):
-    offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
-
     t = []
     z = []
     v = []
@@ -155,7 +155,7 @@ def getValueTuples(profile, rawRecs):
         timestamp = getattr(rec, profile.timestampField, None)
         if timestamp is None:
             continue
-        ti = matplotlib.dates.date2num(timestamp + offset)
+        ti = matplotlib.dates.date2num(timestamp + TIME_OFFSET)
         t.append(ti)
 
         zi = getattr(rec, profile.zField, None)
@@ -178,7 +178,9 @@ def getMeshGrid(t, z, minT=None, maxT=None):
         maxT = t.max()
     nt = settings.XGDS_PLOT_PROFILE_TIME_GRID_RESOLUTION
     dt = float(maxT - minT) / nt
-    tvals = numpy.arange(minT, maxT, dt)
+    tvals = numpy.arange(minT + TIME_OFFSET_DAYS,
+                         maxT + TIME_OFFSET_DAYS,
+                         dt)
 
     minZ = z.min()
     maxZ = z.max()
