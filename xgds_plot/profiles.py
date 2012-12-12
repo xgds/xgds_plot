@@ -24,6 +24,8 @@ matplotlib.use('agg')
 
 import matplotlib.mlab
 import matplotlib.pylab
+from matplotlib import ticker
+import matplotlib.dates
 
 from geocamUtil.loader import getModelByName
 
@@ -32,6 +34,29 @@ from xgds_plot import settings
 
 class Profile(object):
     pass
+
+
+class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
+    def __call__(self, x, pos=0):
+        scale = float( self._locator._get_unit() )
+
+        d = matplotlib.dates.DateFormatter
+        if ( scale >= 365.0 ):
+            self._formatter = d("%Y", self._tz)
+        elif ( scale == 30.0 ):
+            self._formatter = d("%b %Y", self._tz)
+        elif ( (scale == 1.0) or (scale == 7.0) ):
+            self._formatter = d("%b %d", self._tz)
+        elif ( scale == (1.0/24.0) ):
+            self._formatter = d("%H:%M", self._tz)
+        elif ( scale == (1.0/(24*60)) ):
+            self._formatter = d("%H:%M", self._tz)
+        elif ( scale == (1.0/(24*3600)) ):
+            self._formatter = d("%M:%S", self._tz)
+        else:
+            self._formatter = d("%b %d %Y %H:%M:%S", self._tz)
+
+        return self._formatter(x, pos)
 
 
 PROFILE_LOOKUP = {}
@@ -160,7 +185,11 @@ def getContourPlotImage(out, x, y, z,
     matplotlib.pylab.contourf(xi, yi, zi, 256)
     xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
     ax = matplotlib.pylab.gca()
-    ax.xaxis_date()
+
+    ax.xaxis_date(tz=None)
+    fmt = ShortDateFormatter(matplotlib.dates.AutoDateLocator())
+    ax.xaxis.set_major_formatter(fmt)
+
     matplotlib.pyplot.axis([xmin, xmax, ymax, ymin])
     # ax.set_xticklabels(ax.get_xticklabels(), fontdict={'size': 8})
     matplotlib.pyplot.xlabel(labelx, fontsize=8)
@@ -171,7 +200,8 @@ def getContourPlotImage(out, x, y, z,
                           fontsize='xx-small')
     # matplotlib.pyplot.tight_layout()
     matplotlib.pylab.colorbar()
-    matplotlib.pylab.scatter(x, y, s=0.5, c='k')
+    # ax.hold(True)
+    # matplotlib.pylab.scatter(x, y, s=0.5, c='k')
     matplotlib.pylab.setp(fig, figwidth=xinch, figheight=yinch)
     matplotlib.pyplot.savefig(out,
                               format='png',
