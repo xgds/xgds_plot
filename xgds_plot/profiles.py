@@ -16,6 +16,12 @@ except ImportError:
 
 import numpy
 import scipy
+import matplotlib
+
+# must set matplotlib mode before importing pylab to suppress errors
+matplotlib.interactive(False)
+matplotlib.use('agg')
+
 import matplotlib.mlab
 import matplotlib.pylab
 
