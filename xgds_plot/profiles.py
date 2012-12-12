@@ -186,22 +186,22 @@ def getContourPlotImage(out, x, y, z,
     xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
     ax = matplotlib.pylab.gca()
 
-    ax.xaxis_date(tz=None)
-    fmt = ShortDateFormatter(matplotlib.dates.AutoDateLocator())
+    ax.xaxis_date(tz='UTC')
+    fmt = ShortDateFormatter(ax.xaxis.get_major_locator())
     ax.xaxis.set_major_formatter(fmt)
 
     matplotlib.pyplot.axis([xmin, xmax, ymax, ymin])
     # ax.set_xticklabels(ax.get_xticklabels(), fontdict={'size': 8})
-    matplotlib.pyplot.xlabel(labelx, fontsize=8)
-    matplotlib.pyplot.ylabel(labely, fontsize=8)
-    matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'xticklabels'),
-                          fontsize='xx-small')
-    matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'yticklabels'),
-                          fontsize='xx-small')
+    #matplotlib.pyplot.xlabel(labelx, fontsize=8)
+    #matplotlib.pyplot.ylabel(labely, fontsize=8)
+    #matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'xticklabels'),
+    #                      fontsize='xx-small')
+    #matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'yticklabels'),
+    #                      fontsize='xx-small')
     # matplotlib.pyplot.tight_layout()
     matplotlib.pylab.colorbar()
     # ax.hold(True)
-    # matplotlib.pylab.scatter(x, y, s=0.5, c='k')
+    matplotlib.pylab.scatter(x, y, s=0.5, c='k')
     matplotlib.pylab.setp(fig, figwidth=xinch, figheight=yinch)
     matplotlib.pyplot.savefig(out,
                               format='png',
