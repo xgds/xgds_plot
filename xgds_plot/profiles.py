@@ -191,6 +191,19 @@ def getMeshGrid(t, z, minT=None, maxT=None):
     return scipy.meshgrid(tvals, zvals)
 
 
+def percentile(vec, pct):
+    """
+    Sort of like numpy.percentile, back-ported to older versions of
+    numpy.
+    """
+    vec = sorted(vec)
+    n = len(vec)
+    pos = float(pct) / 100 * (n - 1)
+    i = min(int(pos), n - 2)
+    weight = pos - i
+    return vec[i] * (1 - weight) + vec[i + 1] * weight
+
+
 def getContourPlotImage(out, x, y, z,
                         xi, yi, zi,
                         labelx, labely,
@@ -199,9 +212,15 @@ def getContourPlotImage(out, x, y, z,
     xinch, yinch = xpix / 100, ypix / 100
     #fig = matplotlib.pylab.figure(figsize=(xinch, yinch))
     fig = matplotlib.pylab.figure()
-    matplotlib.pylab.contourf(xi, yi, zi, 256)
-    ax = matplotlib.pylab.gca()
 
+    # suppress outliers
+    minLevel = percentile(z, 1.0)
+    maxLevel = percentile(z, 99.0)
+    norm = matplotlib.colors.Normalize(minLevel, maxLevel)
+
+    matplotlib.pylab.contourf(xi, yi, zi, 256, norm=norm)
+
+    ax = matplotlib.pylab.gca()
     ax.xaxis_date(tz=pytz.utc)
     fmt = ShortDateFormatter(ax.xaxis.get_major_locator())
     ax.xaxis.set_major_formatter(fmt)
@@ -218,7 +237,7 @@ def getContourPlotImage(out, x, y, z,
     matplotlib.pylab.colorbar()
     # ax.hold(True)
 
-    # suppress data points outside the contourf grid
+    # suppress scatter-plot points outside the contourf grid
     inRange = reduce(numpy.logical_and,
                      [xi.min() <= x,
                       x <= xi.max(),
