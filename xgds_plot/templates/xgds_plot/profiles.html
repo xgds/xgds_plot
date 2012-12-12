@@ -26,8 +26,10 @@
 
 {% block contents %}
 
+<div style="margin-top: 5px;">&nbsp;</div>
+
 {% for p in profiles %}
-<div>{{ p.name }}</div>
+<div style="margin-top: 5px;">{{ p.name }}</div>
 <img src="{% url xgds_plot_profileRender p.valueCode %}"/>
 {% endfor %}
 
