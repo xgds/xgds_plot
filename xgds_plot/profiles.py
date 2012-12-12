@@ -184,15 +184,14 @@ def getContourPlotImage(out, x, y, z,
     #fig = matplotlib.pylab.figure(figsize=(xinch, yinch))
     fig = matplotlib.pylab.figure()
     matplotlib.pylab.contourf(xi, yi, zi, 256)
-    xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
     ax = matplotlib.pylab.gca()
 
     ax.xaxis_date(tz=pytz.utc)
     fmt = ShortDateFormatter(ax.xaxis.get_major_locator())
     ax.xaxis.set_major_formatter(fmt)
 
-    matplotlib.pyplot.axis([xmin, xmax, ymax, ymin])
     # ax.set_xticklabels(ax.get_xticklabels(), fontdict={'size': 8})
+
     #matplotlib.pyplot.xlabel(labelx, fontsize=8)
     #matplotlib.pyplot.ylabel(labely, fontsize=8)
     #matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'xticklabels'),
@@ -202,7 +201,21 @@ def getContourPlotImage(out, x, y, z,
     # matplotlib.pyplot.tight_layout()
     matplotlib.pylab.colorbar()
     # ax.hold(True)
-    matplotlib.pylab.scatter(x, y, s=0.5, c='k')
+
+    # suppress data points outside the contourf grid
+    inRange = reduce(numpy.logical_and,
+                     [xi.min() <= x,
+                      x <= xi.max(),
+                      yi.min() <= y,
+                      y <= yi.max()],
+                     True)
+    rng = numpy.where(inRange)
+    matplotlib.pylab.scatter(x[rng], y[rng], s=0.5, c='k')
+
+    xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
+    # special case for depth profiles: y < 0 is stupid
+    matplotlib.pyplot.axis([max(xi.min(), xmin), xmax, ymax, max(0, ymin)])
+
     matplotlib.pylab.setp(fig, figwidth=xinch, figheight=yinch)
     matplotlib.pyplot.savefig(out,
                               format='png',
