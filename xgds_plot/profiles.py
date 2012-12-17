@@ -14,7 +14,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-import numpy
+import numpy as np
 import scipy
 import matplotlib
 import pytz
@@ -23,8 +23,7 @@ import pytz
 matplotlib.interactive(False)
 matplotlib.use('agg')
 
-import matplotlib.mlab
-import matplotlib.pylab
+from matplotlib import pyplot as plt
 from matplotlib import ticker
 import matplotlib.dates
 
@@ -105,7 +104,7 @@ def pigeonHole(xp, yp, xi, yi):
 
 
 def balancedDiff(m):
-    result = numpy.ma.masked_all(m.shape)
+    result = np.ma.masked_all(m.shape)
     d = m[1:, :] - m[:-1, :]
     result[1:-1, :] = 0.5 * (d[1:, :] + d[:-1, :])
     result[0, :] = m[1, :] - m[0, :]
@@ -114,7 +113,7 @@ def balancedDiff(m):
 
 
 def griddata(x, y, z, xi, yi):
-    zi = numpy.ma.masked_all(xi.shape, dtype='float64')
+    zi = np.ma.masked_all(xi.shape, dtype='float64')
     for xp, yp, zp in zip(x, y, z):
         coords = pigeonHole(xp, yp, xi, yi)
         if coords is None:
@@ -168,7 +167,7 @@ def getValueTuples(profile, rawRecs):
             continue
         v.append(vi)
 
-    return numpy.array(t), numpy.array(z), numpy.array(v)
+    return np.array(t), np.array(z), np.array(v)
 
 
 def getMeshGrid(t, z, minT=None, maxT=None):
@@ -178,7 +177,7 @@ def getMeshGrid(t, z, minT=None, maxT=None):
         maxT = t.max()
     nt = settings.XGDS_PLOT_PROFILE_TIME_GRID_RESOLUTION
     dt = float(maxT - minT) / nt
-    tvals = numpy.arange(minT + TIME_OFFSET_DAYS,
+    tvals = np.arange(minT + TIME_OFFSET_DAYS,
                          maxT + TIME_OFFSET_DAYS,
                          dt)
 
@@ -186,15 +185,15 @@ def getMeshGrid(t, z, minT=None, maxT=None):
     maxZ = z.max()
     nz = settings.XGDS_PLOT_PROFILE_Z_GRID_RESOLUTION
     dz = float(maxZ - minZ) / nz
-    zvals = numpy.arange(minZ, maxZ, dz)
+    zvals = np.arange(minZ, maxZ, dz)
 
     return scipy.meshgrid(tvals, zvals)
 
 
 def percentile(vec, pct):
     """
-    Sort of like numpy.percentile, back-ported to older versions of
-    numpy.
+    Sort of like np.percentile, back-ported to older versions of
+    np.
     """
     vec = sorted(vec)
     n = len(vec)
@@ -210,55 +209,50 @@ def getContourPlotImage(out, x, y, z,
                         sizePixels):
     xpix, ypix = sizePixels
     xinch, yinch = xpix / 100, ypix / 100
-    #fig = matplotlib.pylab.figure(figsize=(xinch, yinch))
-    fig = matplotlib.pylab.figure()
+    fig = plt.figure()
 
     # suppress outliers
     minLevel = percentile(z, 1.0)
     maxLevel = percentile(z, 99.0)
     norm = matplotlib.colors.Normalize(minLevel, maxLevel)
 
-    matplotlib.pylab.contourf(xi, yi, zi, 256, norm=norm)
-
-    ax = matplotlib.pylab.gca()
+    ax = fig.gca()
+    contours = ax.contourf(xi, yi, zi, 256, norm=norm)
     ax.xaxis_date(tz=pytz.utc)
     fmt = ShortDateFormatter(ax.xaxis.get_major_locator())
     ax.xaxis.set_major_formatter(fmt)
 
-    # ax.set_xticklabels(ax.get_xticklabels(), fontdict={'size': 8})
+    fig.colorbar(contours)
 
-    #matplotlib.pyplot.xlabel(labelx, fontsize=8)
-    #matplotlib.pyplot.ylabel(labely, fontsize=8)
-    #matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'xticklabels'),
-    #                      fontsize='xx-small')
-    #matplotlib.pylab.setp(matplotlib.pylab.getp(ax, 'yticklabels'),
-    #                      fontsize='xx-small')
-    # matplotlib.pyplot.tight_layout()
-    matplotlib.pylab.colorbar()
-    # ax.hold(True)
-
-    # suppress scatter-plot points outside the contourf grid
-    inRange = reduce(numpy.logical_and,
+    # suppress scatterplot points outside the contourf grid
+    inRange = reduce(np.logical_and,
                      [xi.min() <= x,
                       x <= xi.max(),
                       yi.min() <= y,
                       y <= yi.max()],
                      True)
-    rng = numpy.where(inRange)
-    matplotlib.pylab.scatter(x[rng], y[rng], s=0.5, c='k')
+    rng = np.where(inRange)
 
-    xmin, xmax, ymin, ymax = matplotlib.pyplot.axis()
-    # special case for depth profiles: y < 0 is stupid
-    matplotlib.pyplot.axis([max(xi.min(), xmin), xmax, ymax, max(0, ymin)])
+    if 1:
+        ax.hold(True)
+        # add scatterplot sample points to figure
+        ax.scatter(x[rng], y[rng], s=0.5, c='k')
 
-    matplotlib.pylab.setp(fig, figwidth=xinch, figheight=yinch)
-    matplotlib.pyplot.savefig(out,
-                              format='png',
-                              bbox_inches='tight',
-                              dpi=100,
-                              pad_inches=0.05,
-                              # transparent=True,
-                              )
+    # this is mostly to flip the y axis so increasing depth is down.  we
+    # also put in a special case for depth profiles: y < 0 (negative
+    # depth) is distracting and we should make sure any bogus points
+    # above water don't show up on the plot.
+    xmin, xmax, ymin, ymax = plt.axis()
+    ax.axis([max(xi.min(), xmin), xmax, ymax, max(0, ymin)])
+
+    plt.setp(fig, figwidth=xinch, figheight=yinch)
+    fig.savefig(out,
+                format='png',
+                bbox_inches='tight',
+                dpi=100,
+                pad_inches=0.05,
+                # transparent=True,
+                )
 
 
 def numFromDateOrNone(dt):
@@ -280,7 +274,7 @@ def writeProfileContourPlotImage(out, layerId,
         paddedMinTime = None
 
     rawRecs = getRawRecs(profile, paddedMinTime, maxTime)
-    t, z, v = numpy.array(getValueTuples(profile, rawRecs))
+    t, z, v = np.array(getValueTuples(profile, rawRecs))
     ti, zi = getMeshGrid(t, z,
                          numFromDateOrNone(minTime),
                          numFromDateOrNone(maxTime))
@@ -320,7 +314,7 @@ def getProfileContourPlotImageData(layerId,
 
 def testProfiles():
     now = datetime.datetime.utcnow()
-    ago = now - datetime.timedelta(days=3)
+    ago = now - datetime.timedelta(days=30)
     for f in settings.XGDS_PLOT_PROFILES:
         saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
 
