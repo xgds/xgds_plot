@@ -10,6 +10,7 @@ from cStringIO import StringIO
 import re
 import datetime
 import iso8601
+import calendar
 
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, \
@@ -286,6 +287,10 @@ def parseTime(timeString):
     return iso8601.parse_date(timeString)
 
 
+def javaStyle(dt):
+    return int(calendar.timegm(dt.timetuple()) * 1e+3)
+
+
 def profileRender(request, layerId):
     widthPix = int(request.GET.get('w', settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION))
     heightPix = int(request.GET.get('h', settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION))
@@ -305,8 +310,8 @@ def profilesPage(request):
     maxTime = parseTime(request.GET.get('end', 'now'))
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     return render_to_response('xgds_plot/profiles.html',
-                              {'minTime': minTime.isoformat() + 'Z',
-                               'maxTime': maxTime.isoformat() + 'Z',
+                              {'minTime': javaStyle(minTime),
+                               'maxTime': javaStyle(maxTime),
                                'minDisplayTime': minTime + offset,
                                'maxDisplayTime': maxTime + offset,
                                'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,

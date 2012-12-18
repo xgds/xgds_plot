@@ -238,12 +238,9 @@ def getContourPlotImage(out, x, y, z,
         # add scatterplot sample points to figure
         ax.scatter(x[rng], y[rng], s=0.5, c='k')
 
-    # this is mostly to flip the y axis so increasing depth is down.  we
-    # also put in a special case for depth profiles: y < 0 (negative
-    # depth) is distracting and we should make sure any bogus points
-    # above water don't show up on the plot.
-    xmin, xmax, ymin, ymax = plt.axis()
-    ax.axis([max(xi.min(), xmin), xmax, ymax, max(0, ymin)])
+    # force the plot limits we want. note the inversion of yi.max() and yi.min()
+    # so increasing depth is down.
+    ax.axis([xi.min(), xi.max(), yi.max(), yi.min()])
 
     plt.setp(fig, figwidth=xinch, figheight=yinch)
     fig.savefig(out,
