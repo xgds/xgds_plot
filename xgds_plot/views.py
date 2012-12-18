@@ -265,7 +265,7 @@ def mapTileImage(request, level, x, y):
                         mimetype=mimetype)
 
 
-def parseTime(timeString):
+def parseTime(timeString, offset=None):
     # exact match 'now'
     now = datetime.datetime.utcnow()
     if timeString == 'now':
@@ -283,19 +283,35 @@ def parseTime(timeString):
             # interpret large values as Java-style millisecond epoch time
             return datetime.datetime.utcfromtimestamp(f * 1e-3)
 
-    # full ISO 8601 format datetime
-    return iso8601.parse_date(timeString)
+    # parse a couple of full date formats. interpreted as times in the display
+    # time zone.
+    try:
+        return datetime.datetime.strptime(timeString, '%Y-%m-%d %H:%M') - offset
+    except ValueError:
+        pass
+
+    try:
+        return datetime.datetime.strptime(timeString, '%Y-%m-%d %H:%M:%S') - offset
+    except ValueError:
+        pass
+
+    raise ValueError('unrecognized time string "%s"' % timeString)
 
 
 def javaStyle(dt):
     return int(calendar.timegm(dt.timetuple()) * 1e+3)
 
 
+def shortTime(dt):
+    return dt.strftime('%Y-%m-%d %H:%M')
+
+
 def profileRender(request, layerId):
     widthPix = int(request.GET.get('w', settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION))
     heightPix = int(request.GET.get('h', settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION))
-    minTime = parseTime(request.GET.get('start', '-72'))
-    maxTime = parseTime(request.GET.get('end', 'now'))
+    offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+    minTime = parseTime(request.GET.get('start', '-72'), offset)
+    maxTime = parseTime(request.GET.get('end', 'now'), offset)
     imageData = profiles.getProfileContourPlotImageData(layerId,
                                                         widthPix=widthPix,
                                                         heightPix=heightPix,
@@ -306,14 +322,14 @@ def profileRender(request, layerId):
 
 
 def profilesPage(request):
-    minTime = parseTime(request.GET.get('start', '-72'))
-    maxTime = parseTime(request.GET.get('end', 'now'))
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+    minTime = parseTime(request.GET.get('start', '-72'), offset)
+    maxTime = parseTime(request.GET.get('end', 'now'), offset)
     return render_to_response('xgds_plot/profiles.html',
                               {'minTime': javaStyle(minTime),
                                'maxTime': javaStyle(maxTime),
-                               'minDisplayTime': minTime + offset,
-                               'maxDisplayTime': maxTime + offset,
+                               'minDisplayTime': shortTime(minTime + offset),
+                               'maxDisplayTime': shortTime(maxTime + offset),
                                'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,
                                'profiles': profiles.PROFILES},
                               context_instance=RequestContext(request))

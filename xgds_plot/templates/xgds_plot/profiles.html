@@ -28,7 +28,16 @@
 
 <div style="margin-top: 5px;">&nbsp;</div>
 
-<div>{{ minDisplayTime }} .. {{ maxDisplayTime }} {{ displayTimeZone }}</div>
+<form action="." method="get">
+<div>
+  <b>Time range:</b>
+  <input type="text" name="start" value="{{ minDisplayTime }}"/>
+  ..
+  <input type="text" name="end" value="{{ maxDisplayTime }}"/>
+  {{ displayTimeZone }}
+  <input type="submit" name="submit" value="Change"/>
+</div>
+</form>
 
 {% for p in profiles %}
   <div style="margin-top: 5px;">{{ p.name }}</div>
