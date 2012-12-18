@@ -6,3 +6,6 @@
 
 # This is a pip requirements file
 # http://pip.openplans.org/requirement-format.html
+
+pyzmq
+tornado
