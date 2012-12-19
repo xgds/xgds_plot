@@ -219,7 +219,9 @@ def getContourPlotImage(out, x, y, z,
     ax = fig.gca()
     contours = ax.contourf(xi, yi, zi, 256, norm=norm)
     ax.xaxis_date(tz=pytz.utc)
-    fmt = ShortDateFormatter(ax.xaxis.get_major_locator())
+    loc = matplotlib.dates.AutoDateLocator(interval_multiples=True)
+    ax.xaxis.set_major_locator(loc)
+    fmt = ShortDateFormatter(loc)
     ax.xaxis.set_major_formatter(fmt)
 
     fig.colorbar(contours)
@@ -311,7 +313,7 @@ def getProfileContourPlotImageData(layerId,
 
 def testProfiles():
     now = datetime.datetime.utcnow()
-    ago = now - datetime.timedelta(days=30)
+    ago = now - datetime.timedelta(days=3)
     for f in settings.XGDS_PLOT_PROFILES:
         saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
 
