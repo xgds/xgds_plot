@@ -123,11 +123,17 @@ def balancedDiff(m):
 
 def griddata(x, y, z, xi, yi, fillRight=True):
     zi = np.ma.masked_all(xi.shape, dtype='float64')
+    count = np.zeros(xi.shape, dtype='int')
     for xp, yp, zp in zip(x, y, z):
         coords = pigeonHole(xp, yp, xi, yi)
         if coords is None:
             continue
-        zi[coords] = zp
+        c = count[coords]
+        if c:
+            zi[coords] = float(c * zi[coords] + zp) / (c + 1)
+        else:
+            zi[coords] = zp
+        count[coords] = c + 1
 
     if fillRight:
         ny, nx = xi.shape
