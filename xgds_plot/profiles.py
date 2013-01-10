@@ -32,6 +32,8 @@ import matplotlib.dates
 from geocamUtil.loader import getModelByName
 
 from xgds_plot import settings
+from xgds_plot import csvutil
+from xgds_plot.csvutil import q
 
 TIME_OFFSET0 = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
 # ensure integer number of seconds for convenience
@@ -299,40 +301,12 @@ def getProfileData(profile,
     return t, z, v, ti, zi, vi
 
 
-def q(s):
-    return '"' + s + '"'
-
-
-def getTimeHeaders():
-    return (['timestamp',
-             'timestampLocalized',
-             'timestampEpoch',
-             ],
-            ['Timestamp (UTC)',
-             'Timestamp (%s)' % settings.XGDS_PLOT_TIME_ZONE_NAME,
-             'Timestamp (seconds since Unix epoch)',
-            ])
-
-
-def getTimeVals(timeNum):
-    localizedDt = (matplotlib.dates.num2date(timeNum)
-                   .replace(microsecond=0, tzinfo=None))
-    utcDt = localizedDt - TIME_OFFSET
-    epochTime = calendar.timegm(utcDt.timetuple())
-    return [q(str(utcDt)),
-            q(str(localizedDt)),
-            epochTime]
-
-
-def writerow(out, vals):
-    out.write(','.join(vals) + '\n')
-
-
 def intIfInt(z):
     if z == int(z):
         return int(z)
     else:
         return z
+
 
 def blankIfMissing(v):
     if v in (None, np.ma.masked):
@@ -364,14 +338,16 @@ def writeProfileCsv(out, layerId,
         #print 'rng:', rng
         #print 'ti:', ti.shape
 
-    time1, time2 = getTimeHeaders()
+    time1, time2 = csvutil.getTimeHeaders()
 
-    writerow(out, [q(h) for h in time1] + [q('z%s') % z for z in zvals])
-    writerow(out, [q(h) for h in time2] + [q('z=%s' % z) for z in zvals])
+    csvutil.writerow(out, [q(h) for h in time1] + [q('z%s') % z for z in zvals])
+    csvutil.writerow(out, [q(h) for h in time2] + [q('z=%s' % z) for z in zvals])
     for i, t in enumerate(tvals):
-        writerow(out,
-                 [str(v) for v in getTimeVals(t)]
-                 + [blankIfMissing(v) for v in vi[:, i].ravel()])
+        localizedDt = (matplotlib.dates.num2date(t)
+                       .replace(microsecond=0, tzinfo=None))
+        csvutil.writerow(out,
+                         [str(v) for v in csvutil.getTimeVals(localizedDt)]
+                         + [blankIfMissing(v) for v in vi[:, i].ravel()])
 
 
 def saveProfileCsv(layerId,
