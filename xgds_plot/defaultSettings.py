@@ -109,8 +109,15 @@ XGDS_PLOT_TIME_SERIES = {
 
 # xgds_plot assumes its input data is in the UTC time zone and
 # produces its indexes with UTC timestamps. this offset allows you to
-# change the time zone for the plot display only.
+# change the time zone for the plot and profile display only.
 XGDS_PLOT_TIME_OFFSET_HOURS = 0
 XGDS_PLOT_TIME_ZONE_NAME = 'UTC'
 
 XGDS_PLOT_PROFILES = ()
+
+XGDS_PLOT_PROFILE_TIME_GRID_RESOLUTION = 256
+XGDS_PLOT_PROFILE_Z_RANGE = (0, 10, 1.0)
+XGDS_PLOT_PROFILE_EXPORT_TIME_RESOLUTION_SECONDS = 30 * 60
+
+XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION = 1400
+XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION = 200
