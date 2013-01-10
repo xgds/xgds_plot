@@ -321,6 +321,19 @@ def profileRender(request, layerId):
                         mimetype='image/png')
 
 
+def profileCsv(request, layerId):
+    offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+    minTime = parseTime(request.GET.get('start', '-72'), offset)
+    maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    fill = int(request.GET.get('fill', '1'))
+    csvData = profiles.getProfileCsvData(layerId,
+                                         minTime=minTime,
+                                         maxTime=maxTime,
+                                         fill=fill)
+    return HttpResponse(csvData,
+                        mimetype='text/csv')
+
+
 def profilesPage(request):
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     minTime = parseTime(request.GET.get('start', '-72'), offset)

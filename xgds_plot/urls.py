@@ -37,6 +37,10 @@ urlpatterns = patterns(
         'profileRender', {},
         'xgds_plot_profileRender'),
 
+    url(r'^profile/(?P<layerId>[^\.]*)\.csv$',
+        'profileCsv', {},
+        'xgds_plot_profileCsv'),
+
     url(r'^profiles/',
         'profilesPage', {},
         'xgds_plot_profiles'),

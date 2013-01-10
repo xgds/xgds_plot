@@ -9,6 +9,8 @@ import datetime
 import calendar
 import iso8601
 import logging
+import csv
+import calendar
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -31,8 +33,13 @@ from geocamUtil.loader import getModelByName
 
 from xgds_plot import settings
 
-TIME_OFFSET = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+TIME_OFFSET0 = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+# ensure integer number of seconds for convenience
+TIME_OFFSET = datetime.timedelta(seconds=int(TIME_OFFSET0.total_seconds()))
+
 TIME_OFFSET_DAYS = float(settings.XGDS_PLOT_TIME_OFFSET_HOURS) / 24
+
+EXPORT_TIME_RESOLUTION = float(settings.XGDS_PLOT_PROFILE_EXPORT_TIME_RESOLUTION_SECONDS) / (60 * 60 * 24)
 
 class Profile(object):
     pass
@@ -112,7 +119,7 @@ def balancedDiff(m):
     return result
 
 
-def griddata(x, y, z, xi, yi):
+def griddata(x, y, z, xi, yi, fillRight=True):
     zi = np.ma.masked_all(xi.shape, dtype='float64')
     for xp, yp, zp in zip(x, y, z):
         coords = pigeonHole(xp, yp, xi, yi)
@@ -120,15 +127,16 @@ def griddata(x, y, z, xi, yi):
             continue
         zi[coords] = zp
 
-    ny, nx = xi.shape
-    for iy in xrange(ny):
-        zprev = None
-        for ix in xrange(nx):
-            zval = zi[iy, ix]
-            if zprev and not zval:
-                zval = zprev
-                zi[iy, ix] = zval
-            zprev = zval
+    if fillRight:
+        ny, nx = xi.shape
+        for iy in xrange(ny):
+            zprev = None
+            for ix in xrange(nx):
+                zval = zi[iy, ix]
+                if zprev and not zval:
+                    zval = zprev
+                    zi[iy, ix] = zval
+                zprev = zval
 
     return zi
 
@@ -170,22 +178,31 @@ def getValueTuples(profile, rawRecs):
     return np.array(t), np.array(z), np.array(v)
 
 
-def getMeshGrid(t, z, minT=None, maxT=None):
+def getMeshGrid(t, z, minT=None, maxT=None, export=False):
     if minT is None:
         minT = t.min()
     if maxT is None:
         maxT = t.max()
-    nt = settings.XGDS_PLOT_PROFILE_TIME_GRID_RESOLUTION
-    dt = float(maxT - minT) / nt
-    tvals = np.arange(minT + TIME_OFFSET_DAYS,
-                         maxT + TIME_OFFSET_DAYS,
-                         dt)
 
-    minZ = z.min()
-    maxZ = z.max()
-    nz = settings.XGDS_PLOT_PROFILE_Z_GRID_RESOLUTION
-    dz = float(maxZ - minZ) / nz
-    zvals = np.arange(minZ, maxZ, dz)
+    nt = settings.XGDS_PLOT_PROFILE_TIME_GRID_RESOLUTION
+    intervalStart = minT + TIME_OFFSET_DAYS
+    if export:
+        dt = EXPORT_TIME_RESOLUTION
+        intervalStart = int(float(intervalStart) / dt) * dt
+    else:
+        dt = float(maxT - minT) / nt
+    tvals = np.arange(intervalStart,
+                      maxT + TIME_OFFSET_DAYS,
+                      dt)
+
+    if 0:
+        minZ = z.min()
+        maxZ = z.max()
+        nz = settings.XGDS_PLOT_PROFILE_Z_GRID_RESOLUTION
+        dz = float(maxZ - minZ) / nz
+        zvals = np.arange(minZ, maxZ, dz)
+
+    zvals = np.arange(*settings.XGDS_PLOT_PROFILE_Z_RANGE)
 
     return scipy.meshgrid(tvals, zvals)
 
@@ -261,12 +278,11 @@ def numFromDateOrNone(dt):
         return None
 
 
-def writeProfileContourPlotImage(out, layerId,
-                                 widthPix, heightPix,
-                                 minTime=None,
-                                 maxTime=None):
-    profile = PROFILE_LOOKUP[layerId]
-
+def getProfileData(profile,
+                   minTime=None,
+                   maxTime=None,
+                   fillRight=True,
+                   export=False):
     if minTime:
         paddedMinTime = minTime - datetime.timedelta(days=7)
     else:
@@ -276,8 +292,116 @@ def writeProfileContourPlotImage(out, layerId,
     t, z, v = np.array(getValueTuples(profile, rawRecs))
     ti, zi = getMeshGrid(t, z,
                          numFromDateOrNone(minTime),
-                         numFromDateOrNone(maxTime))
-    vi = griddata(t, z, v, ti, zi)
+                         numFromDateOrNone(maxTime),
+                         export=export)
+    vi = griddata(t, z, v, ti, zi, fillRight)
+
+    return t, z, v, ti, zi, vi
+
+
+def q(s):
+    return '"' + s + '"'
+
+
+def getTimeHeaders():
+    return (['timestamp',
+             'timestampLocalized',
+             'timestampEpoch',
+             ],
+            ['Timestamp (UTC)',
+             'Timestamp (%s)' % settings.XGDS_PLOT_TIME_ZONE_NAME,
+             'Timestamp (seconds since Unix epoch)',
+            ])
+
+
+def getTimeVals(timeNum):
+    localizedDt = (matplotlib.dates.num2date(timeNum)
+                   .replace(microsecond=0, tzinfo=None))
+    utcDt = localizedDt - TIME_OFFSET
+    epochTime = calendar.timegm(utcDt.timetuple())
+    return [q(str(utcDt)),
+            q(str(localizedDt)),
+            epochTime]
+
+
+def writerow(out, vals):
+    out.write(','.join(vals) + '\n')
+
+
+def intIfInt(z):
+    if z == int(z):
+        return int(z)
+    else:
+        return z
+
+def blankIfMissing(v):
+    if v in (None, np.ma.masked):
+        return ''
+    else:
+        return str(v)
+
+
+def writeProfileCsv(out, layerId,
+                    minTime=None,
+                    maxTime=None,
+                    fill=True):
+    profile = PROFILE_LOOKUP[layerId]
+
+    t, z, v, ti, zi, vi = getProfileData(profile, minTime, maxTime,
+                                         fill, export=True)
+
+    tvals = ti[0, :].ravel()
+    zvals = [intIfInt(z) for z in zi[:, 0].ravel()]
+
+    if minTime:
+        minTimeNum = numFromDateOrNone(minTime)
+        rng = np.where(tvals > minTimeNum)[0]
+        ti = ti[:, rng]
+        zi = zi[:, rng]
+        vi = vi[:, rng]
+        tvals = ti[0, :].ravel()
+        #print 'tvals:', tvals.shape
+        #print 'rng:', rng
+        #print 'ti:', ti.shape
+
+    time1, time2 = getTimeHeaders()
+
+    writerow(out, [q(h) for h in time1] + [q('z%s') % z for z in zvals])
+    writerow(out, [q(h) for h in time2] + [q('z=%s' % z) for z in zvals])
+    for i, t in enumerate(tvals):
+        writerow(out,
+                 [str(v) for v in getTimeVals(t)]
+                 + [blankIfMissing(v) for v in vi[:, i].ravel()])
+
+
+def saveProfileCsv(layerId,
+                   minTime=None,
+                   maxTime=None,
+                   fill=True):
+    path = '%s.csv' % layerId
+    logging.info('saving profile csv to %s', path)
+    out = open(path, 'w')
+    writeProfileCsv(out, layerId, minTime, maxTime, fill)
+    out.close()
+
+
+def getProfileCsvData(layerId,
+                      minTime=None,
+                      maxTime=None,
+                      fill=True):
+    out = StringIO()
+    writeProfileCsv(out, layerId,
+                    minTime, maxTime, fill)
+    return out.getvalue()
+
+
+def writeProfileContourPlotImage(out, layerId,
+                                 widthPix, heightPix,
+                                 minTime=None,
+                                 maxTime=None):
+    profile = PROFILE_LOOKUP[layerId]
+
+    t, z, v, ti, zi, vi = getProfileData(profile, minTime, maxTime)
 
     sizePixels = (settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION,
                   settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION)
@@ -315,7 +439,8 @@ def testProfiles():
     now = datetime.datetime.utcnow()
     ago = now - datetime.timedelta(days=3)
     for f in settings.XGDS_PLOT_PROFILES:
-        saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
+        # saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
+        saveProfileCsv(f['valueField'], minTime=ago, maxTime=now)
 
 
 def main():
