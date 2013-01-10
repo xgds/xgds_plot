@@ -167,6 +167,9 @@ def getValueTuples(profile, rawRecs):
     z = []
     v = []
     for rec in rawRecs:
+        if not rec.valid:
+            continue
+
         timestamp = getattr(rec, profile.timestampField, None)
         if timestamp is None:
             continue
@@ -240,10 +243,17 @@ def getContourPlotImage(out, x, y, z,
     # suppress outliers
     minLevel = percentile(z, 1.0)
     maxLevel = percentile(z, 99.0)
+    logging.info('getContourPlotImage minLevel=%s maxLevel=%s', minLevel, maxLevel)
     norm = matplotlib.colors.Normalize(minLevel, maxLevel)
 
+    dist = maxLevel - minLevel
+    minPad = minLevel - 0.05 * dist
+    maxPad = maxLevel + 0.05 * dist
+    cappedZi = np.maximum(zi, minPad)
+    cappedZi = np.minimum(cappedZi, maxPad)
+
     ax = fig.gca()
-    contours = ax.contourf(xi, yi, zi, 256, norm=norm)
+    contours = ax.contourf(xi, yi, cappedZi, 256, norm=norm)
     ax.xaxis_date(tz=pytz.utc)
     loc = matplotlib.dates.AutoDateLocator(interval_multiples=True)
     ax.xaxis.set_major_locator(loc)
@@ -426,7 +436,7 @@ def testProfiles():
     now = datetime.datetime.utcnow()
     ago = now - datetime.timedelta(days=3)
     for f in settings.XGDS_PLOT_PROFILES:
-        # saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
+        saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
         saveProfileCsv(f['valueField'], minTime=ago, maxTime=now)
 
 
