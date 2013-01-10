@@ -231,7 +231,8 @@ def percentile(vec, pct):
 def getContourPlotImage(out, x, y, z,
                         xi, yi, zi,
                         labelx, labely,
-                        sizePixels):
+                        sizePixels,
+                        showSamplePoints=True):
     xpix, ypix = sizePixels
     xinch, yinch = xpix / 100, ypix / 100
     fig = plt.figure()
@@ -251,16 +252,16 @@ def getContourPlotImage(out, x, y, z,
 
     fig.colorbar(contours)
 
-    # suppress scatterplot points outside the contourf grid
-    inRange = reduce(np.logical_and,
-                     [xi.min() <= x,
-                      x <= xi.max(),
-                      yi.min() <= y,
-                      y <= yi.max()],
-                     True)
-    rng = np.where(inRange)
+    if showSamplePoints:
+        # suppress scatterplot points outside the contourf grid
+        inRange = reduce(np.logical_and,
+                         [xi.min() <= x,
+                          x <= xi.max(),
+                          yi.min() <= y,
+                          y <= yi.max()],
+                         True)
+        rng = np.where(inRange)
 
-    if 1:
         ax.hold(True)
         # add scatterplot sample points to figure
         ax.scatter(x[rng], y[rng], s=0.5, c='k')
@@ -380,7 +381,8 @@ def getProfileCsvData(layerId,
 def writeProfileContourPlotImage(out, layerId,
                                  widthPix, heightPix,
                                  minTime=None,
-                                 maxTime=None):
+                                 maxTime=None,
+                                 showSamplePoints=True):
     profile = PROFILE_LOOKUP[layerId]
 
     t, z, v, ti, zi, vi = getProfileData(profile, minTime, maxTime)
@@ -391,7 +393,8 @@ def writeProfileContourPlotImage(out, layerId,
                         t, z, v,
                         ti, zi, vi,
                         profile.timeLabel, profile.zLabel,
-                        sizePixels)
+                        sizePixels,
+                        showSamplePoints)
 
 
 def saveProfileContourPlotImage(layerId, minTime=None, maxTime=None):
@@ -409,11 +412,13 @@ def getProfileContourPlotImageData(layerId,
                                    widthPix,
                                    heightPix,
                                    minTime=None,
-                                   maxTime=None):
+                                   maxTime=None,
+                                   showSamplePoints=True):
     out = StringIO()
     writeProfileContourPlotImage(out, layerId,
                                  widthPix, heightPix,
-                                 minTime, maxTime)
+                                 minTime, maxTime,
+                                 showSamplePoints)
     return out.getvalue()
 
 

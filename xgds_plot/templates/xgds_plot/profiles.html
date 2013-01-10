@@ -35,6 +35,9 @@
   ..
   <input type="text" name="end" value="{{ maxDisplayTime }}"/>
   {{ displayTimeZone }}
+  <input type="hidden" name="pts" value="0"/><!-- set value if checkbox below is not checked -->
+  <input type="checkbox" id="pts" name="pts" value="1" {% if showSamplePoints %}checked="1"{% endif %}/>
+  <label for="pts">Show sample points</label>
   <input type="submit" name="submit" value="Change"/>
 </div>
 </form>
@@ -47,7 +50,7 @@
     &nbsp;&nbsp;
     <a href="{% url xgds_plot_profileCsv p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&fill=1">[filled-in csv]</a>
   </div>
-  <img src="{% url xgds_plot_profileRender p.valueCode %}?start={{ minTime }}&end={{ maxTime }}"/>
+  <img src="{% url xgds_plot_profileRender p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&pts={{ showSamplePoints }}"/>
 {% endfor %}
 
 {% endblock %}

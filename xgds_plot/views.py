@@ -312,11 +312,14 @@ def profileRender(request, layerId):
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     minTime = parseTime(request.GET.get('start', '-72'), offset)
     maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    # submitted = request.GET.get('submit') is not None
+    showSamplePoints = int(request.GET.get('pts', '1'))
     imageData = profiles.getProfileContourPlotImageData(layerId,
                                                         widthPix=widthPix,
                                                         heightPix=heightPix,
                                                         minTime=minTime,
-                                                        maxTime=maxTime)
+                                                        maxTime=maxTime,
+                                                        showSamplePoints=showSamplePoints)
     return HttpResponse(imageData,
                         mimetype='image/png')
 
@@ -338,9 +341,11 @@ def profilesPage(request):
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     minTime = parseTime(request.GET.get('start', '-72'), offset)
     maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    showSamplePoints = int(request.GET.get('pts', '1'))
     return render_to_response('xgds_plot/profiles.html',
                               {'minTime': javaStyle(minTime),
                                'maxTime': javaStyle(maxTime),
+                               'showSamplePoints': showSamplePoints,
                                'minDisplayTime': shortTime(minTime + offset),
                                'maxDisplayTime': shortTime(maxTime + offset),
                                'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,
