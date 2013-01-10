@@ -14,8 +14,6 @@ import time
 
 from django import db
 
-import gevent
-
 from geocamUtil import anyjson as json
 from geocamUtil.loader import getClassByName
 from geocamUtil.store import FileStore, LruCacheStore
@@ -140,9 +138,9 @@ class SegmentIndex(object):
             if settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR > 0:
                 sleepTime = batchProcessDuration * settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR
                 print 'sleeping for %.3f seconds to avoid overloading server' % sleepTime
-                gevent.sleep(sleepTime)
+                time.sleep(sleepTime)
             else:
-                gevent.sleep(0)
+                time.sleep(0)
             self.batchProcessStartTime = time.time()
 
         posixTimeMs = self.queryManager.getTimestamp(obj)
