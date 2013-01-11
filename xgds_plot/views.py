@@ -20,6 +20,7 @@ from django.http import HttpResponse, \
      HttpResponseBadRequest
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
+import django.db
 
 from geocamUtil import anyjson as json
 from geocamUtil import KmlUtil
@@ -312,14 +313,18 @@ def profileRender(request, layerId):
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     minTime = parseTime(request.GET.get('start', '-72'), offset)
     maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    assert minTime <= maxTime, 'HTTP GET parameters: start, end: start time must be before end time'
     # submitted = request.GET.get('submit') is not None
     showSamplePoints = int(request.GET.get('pts', '1'))
-    imageData = profiles.getProfileContourPlotImageData(layerId,
-                                                        widthPix=widthPix,
-                                                        heightPix=heightPix,
-                                                        minTime=minTime,
-                                                        maxTime=maxTime,
-                                                        showSamplePoints=showSamplePoints)
+    assert showSamplePoints in (0, 1), 'HTTP GET parameters: pts: specify either 0 or 1'
+    imageData = (profiles.getProfileContourPlotImageDataMultiprocessing
+                 (layerId,
+                  widthPix=widthPix,
+                  heightPix=heightPix,
+                  minTime=minTime,
+                  maxTime=maxTime,
+                  showSamplePoints=showSamplePoints))
+    django.db.reset_queries()  # clear query log to reduce memory usage
     return HttpResponse(imageData,
                         mimetype='image/png')
 
@@ -328,11 +333,14 @@ def profileCsv(request, layerId):
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     minTime = parseTime(request.GET.get('start', '-72'), offset)
     maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    assert minTime <= maxTime, 'HTTP GET parameters: start, end: start time must be before end time'
     fill = int(request.GET.get('fill', '1'))
+    assert fill in (0, 1), 'HTTP GET parameters: fill: specify either 0 or 1'
     csvData = profiles.getProfileCsvData(layerId,
                                          minTime=minTime,
                                          maxTime=maxTime,
                                          fill=fill)
+    django.db.reset_queries()  # clear query log to reduce memory usage
     return HttpResponse(csvData,
                         mimetype='text/csv')
 
@@ -341,7 +349,9 @@ def profilesPage(request):
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
     minTime = parseTime(request.GET.get('start', '-72'), offset)
     maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    assert minTime <= maxTime, 'HTTP GET parameters: start, end: start time must be before end time'
     showSamplePoints = int(request.GET.get('pts', '1'))
+    assert showSamplePoints in (0, 1), 'HTTP GET parameters: pts: specify either 0 or 1'
     return render_to_response('xgds_plot/profiles.html',
                               {'minTime': javaStyle(minTime),
                                'maxTime': javaStyle(maxTime),

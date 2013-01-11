@@ -11,6 +11,7 @@ import iso8601
 import logging
 import csv
 import calendar
+import multiprocessing
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -42,6 +43,7 @@ TIME_OFFSET = datetime.timedelta(seconds=int(TIME_OFFSET0.total_seconds()))
 TIME_OFFSET_DAYS = float(settings.XGDS_PLOT_TIME_OFFSET_HOURS) / 24
 
 EXPORT_TIME_RESOLUTION = float(settings.XGDS_PLOT_PROFILE_EXPORT_TIME_RESOLUTION_SECONDS) / (60 * 60 * 24)
+
 
 class Profile(object):
     pass
@@ -252,6 +254,7 @@ def getContourPlotImage(out, x, y, z,
     cappedZi = np.maximum(zi, minPad)
     cappedZi = np.minimum(cappedZi, maxPad)
 
+    logging.info('getContourPlotImage: plotting data')
     ax = fig.gca()
     contours = ax.contourf(xi, yi, cappedZi, 256, norm=norm)
     ax.xaxis_date(tz=pytz.utc)
@@ -263,6 +266,8 @@ def getContourPlotImage(out, x, y, z,
     fig.colorbar(contours)
 
     if showSamplePoints:
+        logging.info('getContourPlotImage: plotting sample points')
+
         # suppress scatterplot points outside the contourf grid
         inRange = reduce(np.logical_and,
                          [xi.min() <= x,
@@ -278,8 +283,10 @@ def getContourPlotImage(out, x, y, z,
 
     # force the plot limits we want. note the inversion of yi.max() and yi.min()
     # so increasing depth is down.
+    logging.info('getContourPlotImage: configuring axes')
     ax.axis([xi.min(), xi.max(), yi.max(), yi.min()])
 
+    logging.info('getContourPlotImage: writing image')
     plt.setp(fig, figwidth=xinch, figheight=yinch)
     fig.savefig(out,
                 format='png',
@@ -288,6 +295,10 @@ def getContourPlotImage(out, x, y, z,
                 pad_inches=0.05,
                 # transparent=True,
                 )
+
+    logging.info('getContourPlotImage: releasing memory')
+    fig.clf()
+    plt.close(fig)
 
 
 def numFromDateOrNone(dt):
@@ -396,6 +407,8 @@ def writeProfileContourPlotImage(out, layerId,
     profile = PROFILE_LOOKUP[layerId]
 
     t, z, v, ti, zi, vi = getProfileData(profile, minTime, maxTime)
+    logging.warning('writeProfileContourPlotImage minTime=%s maxTime=%s',
+                    minTime, maxTime)
 
     sizePixels = (settings.XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION,
                   settings.XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION)
@@ -432,9 +445,34 @@ def getProfileContourPlotImageData(layerId,
     return out.getvalue()
 
 
+def getProfileContourPlotImageDataMultiprocessing(layerId,
+                                                  widthPix,
+                                                  heightPix,
+                                                  minTime=None,
+                                                  maxTime=None,
+                                                  showSamplePoints=True):
+    pool = multiprocessing.Pool(processes=1)
+    imgData = pool.apply(getProfileContourPlotImageData,
+                         (layerId,
+                          widthPix,
+                          heightPix,
+                          minTime,
+                          maxTime,
+                          showSamplePoints))
+    pool.close()
+    pool.join()
+    return imgData
+
+
 def testProfiles():
     now = datetime.datetime.utcnow()
     ago = now - datetime.timedelta(days=3)
+
+    #s = getProfileContourPlotImageDataMultiprocessing('waterTemperature',
+    #                                                  widthPix=1000, heightPix=200,
+    #                                                  minTime=ago, maxTime=now)
+    #print 'data len:', len(s)
+
     for f in settings.XGDS_PLOT_PROFILES:
         saveProfileContourPlotImage(f['valueField'], minTime=ago, maxTime=now)
         saveProfileCsv(f['valueField'], minTime=ago, maxTime=now)
