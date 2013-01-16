@@ -11,6 +11,7 @@ import matplotlib.dates
 import django.db.models
 
 from xgds_plot.plotUtil import *
+from xgds_plot import settings
 
 
 class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
@@ -60,12 +61,15 @@ class PlotDataSet(object):
             self.field[field.name] = field
             self.label[field.name] = firstcaps(field.verbose_name)
         self._cache = {}
+        self._timeOffset = float(settings.XGDS_PLOT_TIME_OFFSET_HOURS) / 24.0
 
     def getLabel(self, field):
         return self.label[field]
 
-    @staticmethod
-    def getDataType(field):
+    def date2num(self, dt):
+        return matplotlib.dates.date2num(dt) + self._timeOffset
+
+    def getDataType(self, field):
         if isinstance(field, django.db.models.FloatField):
             return (np.float64, lambda val: val)
         if isinstance(field, (django.db.models.IntegerField,
@@ -73,7 +77,7 @@ class PlotDataSet(object):
                               django.db.models.AutoField)):
             return (np.int64, lambda val: val)
         elif isinstance(field, django.db.models.DateTimeField):
-            return (np.float64, matplotlib.dates.date2num)
+            return (np.float64, self.date2num)
         else:
             return (np.float64, lambda val: val)
 
