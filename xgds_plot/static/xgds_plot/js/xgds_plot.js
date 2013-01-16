@@ -266,7 +266,7 @@ $.extend(xgds_plot, {
                                 info.meta.plotOpts);
             if (!xgds_plot.liveMode) {
                 $.extend(true, opts, {
-                    xaxis: xgds_plot.dataTimeRange
+                    xaxis: xgds_plot.plotTimeRange
                 });
             }
 
