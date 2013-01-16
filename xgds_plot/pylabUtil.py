@@ -44,16 +44,25 @@ def setXAxisDateFormatter(ax):
     ax.xaxis.set_major_formatter(fmt)
 
 
+def firstcaps(val):
+    return val[0].upper() + val[1:]
+
+
 class PlotDataSet(object):
     def __init__(self, qset):
         self._qset = list(qset)
         assert self._qset
         self._n = len(self._qset)
-        self._fields = {}
+        self.field = {}
+        self.label = {}
         for fieldTuple in self._qset[0]._meta._field_cache:
             field = fieldTuple[0]
-            self._fields[field.name] = field
+            self.field[field.name] = field
+            self.label[field.name] = firstcaps(field.verbose_name)
         self._cache = {}
+
+    def getLabel(self, field):
+        return self.label[field]
 
     @staticmethod
     def getDataType(field):
@@ -69,8 +78,8 @@ class PlotDataSet(object):
             return (np.float64, lambda val: val)
 
     def __getattr__(self, name):
-        assert name in self._fields
-        dtype, converter = self.getDataType(self._fields[name])
+        assert name in self.field
+        dtype, converter = self.getDataType(self.field[name])
         dataSet = np.zeros(self._n, dtype=dtype)
         for i, rec in enumerate(self._qset):
             dataSet[i] = converter(getattr(rec, name))
@@ -80,3 +89,34 @@ class PlotDataSet(object):
 
     def __getitem__(self, name):
         return getattr(self, name)
+
+
+def percentile(vec, pct):
+    """
+    Sort of like np.percentile, back-ported to older versions of
+    np.
+    """
+    vec = sorted(vec)
+    n = len(vec)
+    if isinstance(pct, (float, int)):
+        pct = np.array(pct)
+    result = np.zeros(len(pct))
+    for j, p in enumerate(pct):
+        pos = float(p) / 100 * (n - 1)
+        i = min(int(pos), n - 2)
+        weight = pos - i
+        result[j] = vec[i] * (1 - weight) + vec[i + 1] * weight
+    return result
+
+
+def extendRange(rng, proportion):
+    rngMin, rngMax = rng
+    dist = rngMax - rngMin
+    return (rngMin - proportion * dist,
+            rngMax + proportion * dist)
+
+
+def rejectOutliers(vec, pctOutliers=1.0, extendProportion=0.05):
+    return (extendRange
+            (percentile(vec, [pctOutliers, 100 - pctOutliers]),
+             extendProportion))
