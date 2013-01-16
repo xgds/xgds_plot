@@ -279,6 +279,8 @@ $.extend(xgds_plot, {
                     xgds_plot.rangeChanged = true;
                 }
             }(info));
+
+            xgds_plot.setupPlotAxisControls(info);
         } else {
             // update old plot
             if (xgds_plot.haveNewData || xgds_plot.rangeChanged) {
@@ -683,42 +685,43 @@ $.extend(xgds_plot, {
             checkbox.removeAttr('disabled');
         });
 
-        // set up the plot axis controls
-        $.each(xgds_plot.plots, function (i, info) {
-            if (info.show) {
-                $.each(info.plot.getAxes(), function (i, axis) {
-                    var box = xgds_plot.getBoundingBoxForAxis(info.plot, axis);
-
-                    // FIX: also need to draw axisTarget on plots that are turned on by user
-
-                    $('<div class="axisTarget" style="z-index:10;position:absolute;left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width +  'px;height:' + box.height + 'px"></div>')
-                        .data('axis.direction', axis.direction)
-                        .data('axis.n', axis.n)
-                        .css({ backgroundColor: "#000", opacity: 0, cursor: "pointer" })
-                        .appendTo(info.plot.getPlaceholder())
-                        .hover(
-                            function () { $(this).css({ opacity: 0.10 }) },
-                            function () { $(this).css({ opacity: 0 }) })
-                        .bind("dragstart",
-                              function (info, axis) {
-                                  return function (evt) {
-                                      return xgds_plot.handleAxisDragStart(evt, info, axis);
-                                  }
-                              }(info, axis))
-                        .bind("drag",
-                              function (info, axis) {
-                                  return function (evt) {
-                                      return xgds_plot.handleAxisDrag(evt, info, axis);
-                                  }
-                              }(info, axis));
-                });
-            }
-        });
-
         // start updating plots
         setInterval(xgds_plot.updatePlots, 200);
         setInterval(xgds_plot.getSegmentDataCoveringPlots, 200);
     }, // function handleMasterMeta
+
+    setupPlotAxisControls: function (info) {
+        if (info.axisControlsInitialized) {
+            return;
+        }
+
+        $.each(info.plot.getAxes(), function (i, axis) {
+            var box = xgds_plot.getBoundingBoxForAxis(info.plot, axis);
+
+            $('<div class="axisTarget" style="z-index:10;position:absolute;left:' + box.left + 'px;top:' + box.top + 'px;width:' + box.width +  'px;height:' + box.height + 'px"></div>')
+                .data('axis.direction', axis.direction)
+                .data('axis.n', axis.n)
+                .css({ backgroundColor: "#000", opacity: 0, cursor: "pointer" })
+                .appendTo(info.plot.getPlaceholder())
+                .hover(
+                    function () { $(this).css({ opacity: 0.10 }) },
+                    function () { $(this).css({ opacity: 0 }) })
+                .bind("dragstart",
+                      function (info, axis) {
+                          return function (evt) {
+                              return xgds_plot.handleAxisDragStart(evt, info, axis);
+                          }
+                      }(info, axis))
+                .bind("drag",
+                      function (info, axis) {
+                          return function (evt) {
+                              return xgds_plot.handleAxisDrag(evt, info, axis);
+                          }
+                      }(info, axis));
+        });
+
+        info.axisControlsInitialized = true;
+    },
 
     handleAxisDragStart: function (evt, info, axis) {
         if (axis.direction == 'x') {
