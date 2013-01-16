@@ -26,6 +26,7 @@ from geocamUtil import anyjson as json
 from geocamUtil import KmlUtil
 
 from xgds_plot import settings
+from xgds_plot.plotUtil import parseTime
 try:
     from xgds_plot import meta, tile, profiles
 except ImportError:
@@ -34,9 +35,6 @@ except ImportError:
 MAP_DATA_PATH = os.path.join(settings.DATA_URL,
                          settings.XGDS_PLOT_DATA_SUBDIR,
                          'map')
-
-FLOAT_REGEX = re.compile(r'^-?\d+(\.\d*)?$')
-
 
 
 def dumps(obj):
@@ -264,39 +262,6 @@ def mapTileImage(request, level, x, y):
         pass
     return HttpResponse(file(img, 'r').read(),
                         mimetype=mimetype)
-
-
-def parseTime(timeString, offset=None):
-    # exact match 'now'
-    now = datetime.datetime.utcnow()
-    if timeString == 'now':
-        return now
-
-    # match a float
-    m = FLOAT_REGEX.search(timeString)
-    if m:
-        f = float(timeString)
-        if f < 1e+6:
-            # interpret small values as delta hours from now
-            dt = datetime.timedelta(hours=f)
-            return now + dt
-        else:
-            # interpret large values as Java-style millisecond epoch time
-            return datetime.datetime.utcfromtimestamp(f * 1e-3)
-
-    # parse a couple of full date formats. interpreted as times in the display
-    # time zone.
-    try:
-        return datetime.datetime.strptime(timeString, '%Y-%m-%d %H:%M') - offset
-    except ValueError:
-        pass
-
-    try:
-        return datetime.datetime.strptime(timeString, '%Y-%m-%d %H:%M:%S') - offset
-    except ValueError:
-        pass
-
-    raise ValueError('unrecognized time string "%s"' % timeString)
 
 
 def javaStyle(dt):
