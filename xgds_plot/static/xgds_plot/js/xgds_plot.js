@@ -725,14 +725,16 @@ $.extend(xgds_plot, {
 
     handleAxisDragStart: function (evt, info, axis) {
         if (axis.direction == 'x') {
+	    var xaxis = info.plot.getAxes().xaxis;
             info.drag.x = {
                 start: evt.offsetX,
-                axisRange: $.extend(true, {}, info.plot.getAxes().xaxis.options)
+                axisRange: {min: xaxis.min, max: xaxis.max}
             };
         } else if (axis.direction == 'y') {
+	    var yaxis = info.plot.getAxes().yaxis;
             info.drag.y = {
                 start: evt.offsetY,
-                axisRange: $.extend(true, {}, info.plot.getAxes().yaxis.options)
+                axisRange: {min: yaxis.min, max: yaxis.max}
             };
         }
     },
@@ -767,8 +769,10 @@ $.extend(xgds_plot, {
             axis.options.max = dragInfo.axisRange.max + motion;
         }
         xgds_plot.setLiveMode(false);
-        xgds_plot.matchXRange(info.plot);
-        xgds_plot.rangeChanged = true;
+	if (axis.direction == 'x') {
+            xgds_plot.matchXRange(info.plot);
+            xgds_plot.rangeChanged = true;
+	}
     },
 
     handleServerTime: function (serverTime) {
