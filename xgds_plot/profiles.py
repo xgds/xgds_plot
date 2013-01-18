@@ -36,9 +36,8 @@ from xgds_plot import settings
 from xgds_plot import csvutil
 from xgds_plot.csvutil import q
 
-TIME_OFFSET0 = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
-# ensure integer number of seconds for convenience
-TIME_OFFSET = datetime.timedelta(seconds=int(TIME_OFFSET0.total_seconds()))
+TIME_OFFSET0 = csvutil.TIME_OFFSET0
+TIME_OFFSET = csvutil.TIME_OFFSET
 
 TIME_OFFSET_DAYS = float(settings.XGDS_PLOT_TIME_OFFSET_HOURS) / 24
 

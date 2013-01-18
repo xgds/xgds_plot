@@ -4,9 +4,18 @@ import calendar
 
 from xgds_plot import settings
 
+try:
+    datetime.timedelta().total_seconds
+    def total_seconds(delta):
+        return delta.total_seconds()
+except AttributeError:
+    def total_seconds(delta):
+        return delta.days * 24 * 60 * 60 + delta.seconds + delta.microseconds * 1e-6
+
+
 TIME_OFFSET0 = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
 # ensure integer number of seconds for convenience
-TIME_OFFSET = datetime.timedelta(seconds=int(TIME_OFFSET0.total_seconds()))
+TIME_OFFSET = datetime.timedelta(seconds=int(total_seconds(TIME_OFFSET0)))
 
 
 def q(s):
