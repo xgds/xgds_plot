@@ -160,7 +160,7 @@ class XgdsPlotTimeSeries(LazyAttributes):
         self.timeOfDay = timeOfDay
         self.isDate = isDate
 
-        if dataFunc and not data:
+        if dataFunc is not None and data is None:
             self.setLazy('data', dataFunc)
 
     def copy(self):
