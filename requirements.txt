@@ -9,3 +9,11 @@
 
 pyzmq
 tornado
+
+# needed for indexing and profile rendering
+numpy
+scipy
+matplotlib
+
+# matplotlib colorbar plotting relies on this, obscure issue
+python-dateutil
