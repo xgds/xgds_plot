@@ -8,3 +8,4 @@
 /static/js/*.r*.js
 /static/css/*.r*.css
 /xgds_plot/build
+/xgds_plot/notebook/profile_default/ipython_notebook_config.py

@@ -121,3 +121,7 @@ XGDS_PLOT_PROFILE_EXPORT_TIME_RESOLUTION_SECONDS = 30 * 60
 
 XGDS_PLOT_PROFILE_TIME_PIX_RESOLUTION = 1400
 XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION = 200
+
+# list any extra ipython notebook startup files here. they will be installed in
+# <site>/var/notebook/profile_default/startup
+XGDS_PLOT_NOTEBOOK_STARTUP_FILES = []
