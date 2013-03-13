@@ -21,7 +21,7 @@ import isruApp.models
 
 _djangoDbSettings = settings.DATABASES['default']
 DB_SETTINGS = dict(host=_djangoDbSettings['HOST'],
-                   port=_djangoDbSettings['PORT'],
+                   port=int(_djangoDbSettings['PORT']),
                    user=_djangoDbSettings['USER'],
                    passwd=_djangoDbSettings['PASSWORD'],
                    db=_djangoDbSettings['NAME'])
