@@ -1,0 +1,100 @@
+#!/bin/bash
+#
+# nbserver     Startup script for the Apache HTTP Server
+#
+# chkconfig: - 90 10
+# description: IPython notebook server
+# processname: nbserver
+#
+### BEGIN INIT INFO
+# Provides:          nbserver
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: IPython notebook server
+# Description:       Starts the IPython notebook server
+### END INIT INFO
+
+# to run this script at boot on ubuntu, install it in
+# /etc/init.d and run the following:
+#   update-rc.d nbserver defaults
+
+# todo: make this a template that works across different sites
+
+PROJ_ROOT=/usr/local/irg/releases/xgds/xgds_isru
+IPYTHONDIR=$PROJ_ROOT/var/notebook
+DAEMON=$PROJ_ROOT/apps/xgds_plot/bin/nbserver.sh
+NBSERVER_PID_FILE=$IPYTHONDIR/profile_default/pid/nbserver.pid
+NBSERVER_LOG_FILE=$IPYTHONDIR/profile_default/log/nbserver.log
+PROCNAME=ipython
+
+test -x $DAEMON || exit 0
+
+# ubuntu
+#. /lib/init/vars.sh
+#. /lib/lsb/init-functions
+
+# redhat
+. /etc/init.d/functions
+
+nbserver_start() {
+    if daemon --pidfile=${NBSERVER_PID_FILE} $DAEMON
+    then
+        rc=0
+        sleep 1
+        if ! kill -0 $(cat $NBSERVER_PID_FILE) >/dev/null 2>&1; then
+            echo "nbserver daemon failed to start"
+            rc=1
+        fi
+    else
+        rc=1
+    fi
+    echo
+    if [ $rc -eq 0 ]; then
+	return 0
+    else
+        rm -f $NBSERVER_PID_FILE
+        return 1
+    fi
+} # nbserver_start
+
+case "$1" in
+  start|"")
+	echo -n "Starting nbserver"
+	if [ -s $NBSERVER_PID_FILE ] && kill -0 $(cat $NBSERVER_PID_FILE) >/dev/null 2>&1; then
+	    echo "apparently already running"
+	    exit 0
+	fi
+	nbserver_start
+	;;
+  stop)
+	echo -n "Stopping nbserver daemon"
+	killproc -p $NBSERVER_PID_FILE ${PROCNAME}
+	echo $?
+	rm -f $NBSERVER_PID_FILE
+	;;
+  status)
+	#status_of_proc -p $NBSERVER_PID_FILE "$DAEMON" nbserver
+	status -p $NBSERVER_PID_FILE ${PROCNAME}
+	exit $?	# notreached due to set -e
+	;;
+  restart|reload|force-reload)
+	set +e
+	    echo "Restarting nbserver daemon"
+	    if [ -s $NBSERVER_PID_FILE ] && kill -0 $(cat $NBSERVER_PID_FILE) >/dev/null 2>&1; then
+		killproc -p $NBSERVER_PID_FILE ${PROCNAME} || true
+		sleep 1
+	    else
+		echo "nbserver daemon not running, attempting to start."
+	    	rm -f $NBSERVER_PID_FILE
+	    fi
+            nbserver_start
+	;;
+  *)
+	echo "Usage: nbserver start|stop|status|restart" >&2
+	exit 1
+	;;
+esac
+
+:
