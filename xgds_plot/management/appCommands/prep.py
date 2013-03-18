@@ -56,10 +56,10 @@ class Command(NoArgsCommand):
 
         # symlink the contents of the notebook directory under the <site>/var directory
         installer = Installer(builder)
-        installer.installRecurse(profileDir,
-                                 os.path.join(settings.VAR_ROOT, 'notebook', 'profile_default'))
+        installProfileDir = os.path.join(settings.VAR_ROOT, 'notebook', 'profile_default')
+        installer.installRecurse(profileDir, installProfileDir)
 
         # symlink extra startup files
-        startupDir = os.path.join(profileDir, 'startup')
+        startupDir = os.path.join(installProfileDir, 'startup')
         for f in settings.XGDS_PLOT_NOTEBOOK_STARTUP_FILES:
             installer.installFile(f, startupDir)
