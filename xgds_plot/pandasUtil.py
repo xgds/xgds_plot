@@ -7,6 +7,7 @@
 import logging
 import sys
 from itertools import izip
+import copy
 
 import numpy as np
 import pandas as pd
@@ -35,101 +36,52 @@ def getDbConnection():
     return dbConnectionG
 
 
-def getOrderField(field):
-    if field.startswith('-'):
-        field = field[1:] + ' DESC'
-    return field
+def quoteIfString(obj):
+    if isinstance(obj, (str, unicode)):
+        return '"%s"' % obj
+    else:
+        return obj
 
 
-def getOrderFields(ordering):
-    return ', '.join((getOrderField(field) for field in ordering))
-
-
-def sqlAnd(*constraints):
-    return ' AND '.join(constraints)
-
-
-def sqlOr(*constraints):
-    return ' OR '.join(constraints)
-
-
-def getData(query='',
-            select=True,
-            table=None,
-            fields='*',
-            where=None,
-            order=True,
-            ordering=None,
-            limit=None,
-            con=None):
-    if con is None:
-        con = getDbConnection()
-
-    if select and table is not None:
-        selectClause = 'SELECT %s FROM %s ' % (fields, table)
-        query = selectClause + query
-
-    if where is not None:
-        whereClause = ' WHERE %s' % where
-        query += whereClause
-
-    if order and ordering is not None:
-        orderClause = ' ORDER BY %s' % getOrderFields(ordering)
-        query += orderClause
-
-    if limit is not None:
-        limitClause = ' LIMIT %s' % limit
-        query += limitClause
-
-    logging.info('getData: %s' % query)
-    return psql.frame_query(query, con=con)
-
-
-class DataModel(object):
-    def __init__(self, model, **kwargs):
-        self.con = kwargs.pop('con', None)
+class DjangoDataFrame(object):
+    def __init__(self, model):
         self.name = model.__name__
+        self.qset = model.objects.all()
 
-        kwargs.setdefault('table', model._meta.db_table)
-        if model._meta.ordering:
-            kwargs.setdefault('ordering', model._meta.ordering)
-
-        self.defaults = kwargs
-
-    def all(self):
-        return self.filter()
-
-    def filter(self, *args, **kwargs):
-        for k, v in self.defaults.iteritems():
-            kwargs.setdefault(k, v)
-        result = getData(*args, **kwargs)
-        return self.postprocess(result, *args, **kwargs)
-
-    def postprocess(self, result, *args, **kwargs):
-        if (hasattr(result, 'timestampSeconds')
-            and hasattr(result, 'timestampMicroseconds')):
-            ts = pd.Series(np.array(result.timestampSeconds,
-                                    dtype='datetime64[us]')
-                           + np.array(result.timestampMicroseconds,
-                                      dtype='timedelta64[us]'),
-                           name='timestamp',
-                           index=result.index)
-            result = result.join(ts)
-            result = result.drop(['timestampSeconds',
-                                  'timestampMicroseconds'],
-                                 axis=1)
-
-        if hasattr(result, 'timestamp'):
-            result.index = result.timestamp
-
+    def _replaceQset(self, qset):
+        result = copy.copy(self)
+        result.qset = qset
         return result
 
-    def get(self, *args, **kwargs):
-        matches = self.filter(*args, **kwargs)
-        if len(matches) != 1:
-            raise ValueError('get() query returned %s matches, expected exactly 1'
-                             % len(matches))
-        return matches.xs(0)
+    def getSql(self):
+        # str(self.qset.query) usually works but quoting seems to be
+        # messed up if you have a string parameter.
+        query, params = self.qset.query.sql_with_params()
+        params = tuple([quoteIfString(obj) for obj in params])
+        return query % params
+
+    def filter(self, *args, **kwargs):
+        return self._replaceQset(self.qset.filter(*args, **kwargs))
+
+    def __getitem__(self, k):
+        return self._replaceQset(self.qset[k])
+
+    def getFrame(self, *args, **kwargs):
+        filtered = self.filter(*args, **kwargs)
+        sql = filtered.getSql()
+        logging.debug('getFrame: %s', sql)
+        result = psql.frame_query(sql, con=getDbConnection())
+        return self.postProcess(result)
+
+    def getRecord(self, *args, **kwargs):
+        frame = self.getFrame(*args, **kwargs)
+        if len(frame) != 1:
+            raise ValueError('getRecord() query returned %s matches, expected exactly 1'
+                             % len(frame))
+        return frame.xs(0)
+
+    def postProcess(self, result):
+        return result
 
 
 class Data(object):
