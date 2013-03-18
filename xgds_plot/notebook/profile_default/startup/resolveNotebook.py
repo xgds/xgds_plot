@@ -1,1 +1,0 @@
-/usr/local/irg/releases/xgds/xgds_isru/apps/isruApp/resolveNotebook.py
