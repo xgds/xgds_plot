@@ -17,9 +17,6 @@ from django.conf import settings
 from django.db.models import get_app, get_models
 from matplotlib import pyplot as plt
 
-import isruApp
-import isruApp.models
-
 _djangoDbSettings = settings.DATABASES['default']
 DB_SETTINGS = dict(host=_djangoDbSettings['HOST'],
                    port=int(_djangoDbSettings['PORT']),
@@ -30,6 +27,9 @@ dbConnectionG = None
 
 
 def getDbConnection():
+    """
+    Lazily initializes and caches a default db connection.
+    """
     global dbConnectionG
     if not dbConnectionG:
         dbConnectionG = MySQLdb.connect(**DB_SETTINGS)
@@ -43,35 +43,74 @@ def quoteIfString(obj):
         return obj
 
 
-class DjangoDataFrame(object):
-    def __init__(self, model):
+class DjangoFrameSource(object):
+    """
+    A DjangoFrameSource acts like a Django object manager, but instead
+    of returning a Django QuerySet object, it returns an XgdsFrame
+    object designed for easy plotting.
+
+    Familiar Django methods filter() and array slicing ([:10] -> SQL
+    LIMIT 10) work unchanged. In order to finalize the query you either
+    call getFrame() to get a frame with an arbitrary number of records,
+    or getRecord() to get a frame expected to contain a single record
+    and extract that record.
+
+    Much like Django QuerySet, we do some caching. If you want the same
+    DjangoFrameSource but with an empty cache, call source.copy().
+
+    The postProcess() method is designed to enable model-specific
+    post-processing in derived classes. (Applied after the data is
+    received from the database and before returning the XgdsFrame.)
+    """
+
+    def __init__(self, model, parent=None):
         self.name = model.__name__
-        self.qset = model.objects.all()
+        self.parent = parent
+        self.model = model
+        self.qset = None
+        self.cache = {}
+
+    def copy(self):
+        result = type(self)(self.model, self.parent)
+        result.qset = copy.deepcopy(self.qset)
+        return result
+
+    def _getQset(self):
+        if self.qset is None:
+            self.qset = self.parent._apply(self.model.objects.all())
+        return self.qset
 
     def _replaceQset(self, qset):
-        result = copy.copy(self)
+        result = self.copy()
         result.qset = qset
         return result
 
     def getSql(self):
         # str(self.qset.query) usually works but quoting seems to be
         # messed up if you have a string parameter.
-        query, params = self.qset.query.sql_with_params()
+        query, params = self._getQset().query.sql_with_params()
         params = tuple([quoteIfString(obj) for obj in params])
         return query % params
 
     def filter(self, *args, **kwargs):
-        return self._replaceQset(self.qset.filter(*args, **kwargs))
+        return self._replaceQset(self._getQset().filter(*args, **kwargs))
 
     def __getitem__(self, k):
-        return self._replaceQset(self.qset[k])
+        return self._replaceQset(self._getQset()[k])
+
+    def getDataWithCache(self, sql):
+        result = self.cache.get(sql)
+        if result is None:
+            result = psql.frame_query(sql, con=getDbConnection())
+            result = self.postProcess(result)
+            self.cache[sql] = result
+        return result
 
     def getFrame(self, *args, **kwargs):
         filtered = self.filter(*args, **kwargs)
         sql = filtered.getSql()
         logging.debug('getFrame: %s', sql)
-        result = psql.frame_query(sql, con=getDbConnection())
-        return self.postProcess(result)
+        return self.getDataWithCache(sql)
 
     def getRecord(self, *args, **kwargs):
         frame = self.getFrame(*args, **kwargs)
@@ -80,22 +119,113 @@ class DjangoDataFrame(object):
                              % len(frame))
         return frame.xs(0)
 
+    def _setLabelToVerboseName(self, frame):
+        for f in self.model._meta.fields:
+            if hasattr(frame, f.name):
+                column = getattr(frame, f.name)
+                setattr(column, 'label', f.verbose_name)
+                print getattr(column, 'label')
+
     def postProcess(self, result):
         return result
 
 
-class Data(object):
-    def addModel(self, model, name=None):
-        if name is None:
-            name = model.name
-        setattr(self, name, model)
+class QuerySetLike(object):
+    """
+    A QuerySetLike has methods similar to a Django QuerySet but simply
+    stores a history of what you call on it.  You can use the _apply()
+    method to _apply the same calls to an actual QuerySet later.
 
-    def __str__(self):
-        models = sorted(vars(self).keys())
-        return '\n'.join(models)
+    Example usage:
+      x = QuerySetLike()
+      y = x.filter(foo='bar')
+      z = y[:10]
+      filteredQuerySet = z.apply(SomeDjangoModel.objects)
+    """
 
-    def __repr__(self):
-        return str(self)
+    def __init__(self):
+        self._ops = []
+
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def _appendOp(self, methodName, args, kwargs):
+        result = self.copy()
+        result._ops.append((methodName, args, kwargs))
+        return result
+
+    def filter(self, *args, **kwargs):
+        return self._appendOp('filter', args, kwargs)
+
+    def __getitem__(self, k):
+        return self._appendOp('__getitem__', [k], {})
+
+    def _apply(self, qset):
+        for methodName, args, kwargs in self._ops:
+            method = getattr(qset, methodName)
+            qset = method(*args, **kwargs)
+        return qset
+
+
+class AbstractTimeSeriesSource(object):
+    def __init__(self, frameSource, valueFieldName):
+        self._frameSource = frameSource
+        self._valueFieldName = valueFieldName
+        self._frameCache = None
+
+    def _getFrame(self):
+        if self._frameCache is None:
+            self._frameCache = self._frameSource.getFrame()
+        return self._frameCache
+
+    def _getField(self, fname):
+        return getattr(self._getFrame(), fname)
+
+    def _getValueField(self):
+        return self._getField(self._valueFieldName)
+
+    frame = property(_getFrame)
+    value = property(_getValueField)
+
+
+def makeTimeSeriesSource(djangoModel, baseClass=AbstractTimeSeriesSource):
+    """
+    Make a derived TimeSeriesSource class, adding properties based on
+    the fields available in the given Django model.
+    """
+
+    # work-around for python closure scope issue
+    def getLambda(name):
+        return lambda self: self._getField(name)
+
+    props = {}
+    for f in djangoModel._meta.fields:
+        props[f.name] = property(getLambda(f.name))
+    print props
+
+    derivedClassName = djangoModel.__name__ + 'TimeSeriesSource'
+    derivedClass = type(derivedClassName,
+                        (baseClass,),
+                        props)
+
+    return derivedClass
+
+
+class Data(QuerySetLike):
+    def __init__(self,
+                 frameSourceClass=DjangoFrameSource,
+                 timeSeriesSourceClass=AbstractTimeSeriesSource):
+        super(Data, self).__init__()
+        self._frameSourceClass = frameSourceClass
+        self._timeSeriesSourceClass = timeSeriesSourceClass
+
+    def _addModel(self, model):
+        frameSource = self._frameSourceClass(model, self)
+        setattr(self, model.__name__, frameSource)
+
+    def _addVariable(self, frameSource, valueFieldName):
+        timeSeriesSource = self._timeSeriesSourceClass(frameSource, valueFieldName)
+        setattr(self, valueFieldName, timeSeriesSource)
 
 
 def rejectOutliers(frame, fieldName,
@@ -116,7 +246,9 @@ pd.DataFrame.rejectOutliers = rejectOutliers
 
 
 def _applyLabel(x, labelFunc):
-    label = getattr(x, 'name', None)
+    label = getattr(x, 'label', None)
+    if not label:
+        label = getattr(x, 'name', None)
     if label:
         labelFunc(label)
 
@@ -139,3 +271,22 @@ def xscatter(x, y, c='b', *args, **kwargs):
     _applyLabel(y, plt.ylabel)
     # default figure size for scatter plots
     plt.gcf().set_size_inches(5, 4)
+
+
+def xheatmap(x, y, bins=30, **kwargs):
+    heatmap, xedges, yedges = np.histogram2d(x,
+                                             y,
+                                             bins=bins)
+    heatmap = np.rot90(heatmap)  # histogram2d output is weird
+    extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
+    im = plt.imshow(heatmap, extent=extent, aspect='auto')
+    _applyLabel(x, plt.xlabel)
+    _applyLabel(y, plt.ylabel)
+    cb = plt.colorbar(im)
+    cb.ax.set_ylabel('Counts')
+
+
+def xhist(x, **kwargs):
+    plt.hist(x, **kwargs)
+    _applyLabel(x, plt.xlabel)
+    plt.ylabel('Counts')
