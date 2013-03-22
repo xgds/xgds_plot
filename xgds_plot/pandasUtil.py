@@ -43,9 +43,23 @@ def quoteIfString(obj):
         return obj
 
 
-class DjangoFrameSource(object):
+def rejectOutliers(frame, fieldName,
+                   percent=1,
+                   rejectLow=True,
+                   rejectHigh=True):
+    field = getattr(frame, fieldName)
+    lo, hi = np.percentile(field, [percent, 100 - percent])
+    filter = True
+    if rejectLow:
+        filter = np.logical_and(filter, lo <= field)
+    if rejectHigh:
+        filter = np.logical_and(filter, field <= hi)
+    return frame[filter]
+
+
+class AbstractFrameSource(object):
     """
-    A DjangoFrameSource acts like a Django object manager, but instead
+    A AbstractFrameSource acts like a Django object manager, but instead
     of returning a Django QuerySet object, it returns an XgdsFrame
     object designed for easy plotting.
 
@@ -56,7 +70,7 @@ class DjangoFrameSource(object):
     and extract that record.
 
     Much like Django QuerySet, we do some caching. If you want the same
-    DjangoFrameSource but with an empty cache, call source.copy().
+    AbstractFrameSource but with an empty cache, call source.copy().
 
     The postProcess() method is designed to enable model-specific
     post-processing in derived classes. (Applied after the data is
@@ -64,7 +78,7 @@ class DjangoFrameSource(object):
     """
 
     def __init__(self, model, parent=None):
-        self.name = model.__name__
+        self._name = model.__name__
         self.parent = parent
         self.model = model
         self.qset = None
@@ -107,10 +121,23 @@ class DjangoFrameSource(object):
         return result
 
     def getFrame(self, *args, **kwargs):
-        filtered = self.filter(*args, **kwargs)
+        if args or kwargs:
+            filtered = self.filter(*args, **kwargs)
+        else:
+            filtered = self
         sql = filtered.getSql()
         logging.debug('getFrame: %s', sql)
         return self.getDataWithCache(sql)
+
+    def rejectOutliers(self, fieldName,
+                       percent=1,
+                       rejectLow=True,
+                       rejectHigh=True):
+        return rejectOutliers(self.getFrame(),
+                              fieldName,
+                              percent,
+                              rejectLow,
+                              rejectHigh)
 
     def getRecord(self, *args, **kwargs):
         frame = self.getFrame(*args, **kwargs)
@@ -119,15 +146,39 @@ class DjangoFrameSource(object):
                              % len(frame))
         return frame.xs(0)
 
+    def _getField(self, name):
+        return getattr(self.getFrame(), name)
+
     def _setLabelToVerboseName(self, frame):
         for f in self.model._meta.fields:
             if hasattr(frame, f.name):
                 column = getattr(frame, f.name)
                 setattr(column, 'label', f.verbose_name)
-                print getattr(column, 'label')
 
     def postProcess(self, result):
         return result
+
+
+def makeFrameSourceDerivedClass(djangoModel, baseClass):
+    """
+    Make a derived FrameSource class, adding properties based on
+    the fields available in the given Django model.
+    """
+
+    # work-around for python closure scope issue
+    def getLambda(name):
+        return lambda self: self._getField(name)
+
+    props = {}
+    for f in djangoModel._meta.fields:
+        props[f.name] = property(getLambda(f.name))
+
+    derivedClassName = djangoModel.__name__ + 'FrameSource'
+    derivedClass = type(derivedClassName,
+                        (baseClass,),
+                        props)
+
+    return derivedClass
 
 
 class QuerySetLike(object):
@@ -188,7 +239,7 @@ class AbstractTimeSeriesSource(object):
     value = property(_getValueField)
 
 
-def makeTimeSeriesSource(djangoModel, baseClass=AbstractTimeSeriesSource):
+def makeTimeSeriesSourceDerivedClass(djangoModel, baseClass):
     """
     Make a derived TimeSeriesSource class, adding properties based on
     the fields available in the given Django model.
@@ -201,7 +252,6 @@ def makeTimeSeriesSource(djangoModel, baseClass=AbstractTimeSeriesSource):
     props = {}
     for f in djangoModel._meta.fields:
         props[f.name] = property(getLambda(f.name))
-    print props
 
     derivedClassName = djangoModel.__name__ + 'TimeSeriesSource'
     derivedClass = type(derivedClassName,
@@ -213,36 +263,25 @@ def makeTimeSeriesSource(djangoModel, baseClass=AbstractTimeSeriesSource):
 
 class Data(QuerySetLike):
     def __init__(self,
-                 frameSourceClass=DjangoFrameSource,
-                 timeSeriesSourceClass=AbstractTimeSeriesSource):
+                 frameSourceBaseClass=AbstractFrameSource,
+                 timeSeriesSourceBaseClass=AbstractTimeSeriesSource):
         super(Data, self).__init__()
-        self._frameSourceClass = frameSourceClass
-        self._timeSeriesSourceClass = timeSeriesSourceClass
+        self._frameSourceBaseClass = frameSourceBaseClass
+        self._timeSeriesSourceBaseClass = timeSeriesSourceBaseClass
 
     def _addModel(self, model):
-        frameSource = self._frameSourceClass(model, self)
+        frameSourceClass = makeFrameSourceDerivedClass(model,
+                                                       self._frameSourceBaseClass)
+        frameSource = frameSourceClass(model, self)
         setattr(self, model.__name__, frameSource)
 
+    def getVariable(self, frameSource, valueFieldName):
+        timeSeriesClass = makeTimeSeriesSourceDerivedClass(frameSource.model,
+                                                           self._timeSeriesSourceBaseClass)
+        return timeSeriesClass(frameSource, valueFieldName)
+
     def _addVariable(self, frameSource, valueFieldName):
-        timeSeriesSource = self._timeSeriesSourceClass(frameSource, valueFieldName)
-        setattr(self, valueFieldName, timeSeriesSource)
-
-
-def rejectOutliers(frame, fieldName,
-                   percent=1,
-                   rejectLow=True,
-                   rejectHigh=True):
-    field = getattr(frame, fieldName)
-    lo, hi = np.percentile(field, [percent, 100 - percent])
-    filter = True
-    if rejectLow:
-        filter = np.logical_and(filter, lo <= field)
-    if rejectHigh:
-        filter = np.logical_and(filter, field <= hi)
-    return frame[filter]
-
-# monkey patch
-pd.DataFrame.rejectOutliers = rejectOutliers
+        setattr(self, valueFieldName, self.getVariable(frameSource, valueFieldName))
 
 
 def _applyLabel(x, labelFunc):
