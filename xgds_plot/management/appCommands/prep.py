@@ -48,6 +48,9 @@ class Command(NoArgsCommand):
         profileDir = os.path.join(appDir, 'notebook', 'profile_default')
         siteConfig = os.path.join(profileDir, 'ipython_notebook_config.py')
 
+        if not os.path.exists(profileDir):
+            os.makedirs(profileDir)
+
         # generate initial ipython_notebook_config.py file if not already present
         if not os.path.exists(siteConfig):
             siteConfigTemplate = os.path.join(appDir, 'management', 'templates',
