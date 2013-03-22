@@ -17,3 +17,14 @@ load_subconfig('shared_notebook_config.py')
 
 ######################################################################
 # Add your modifications below this point
+
+# uncomment the section below to switch to https protocol on port
+# 8443. you'll need to generate your own SSL certificate.
+
+#from IPython.lib import passwd as hashPassword
+#from xgds_plot import settings
+
+#c.NotebookApp.ip = '*'
+#c.NotebookApp.port = 8443
+#c.NotebookApp.certfile = settings.VAR_ROOT + 'notebook/profile_default/security/cert.pem'
+#c.NotebookApp.password = hashPassword('...')
