@@ -91,7 +91,9 @@ class AbstractFrameSource(object):
 
     def _getQset(self):
         if self.qset is None:
-            self.qset = self.parent._apply(self.model.objects.all())
+            self.qset = self.model.objects.all()
+            filtered = self.parent._apply(self)
+            self.qset = filtered.qset
         return self.qset
 
     def _replaceQset(self, qset):
@@ -128,6 +130,15 @@ class AbstractFrameSource(object):
         sql = filtered.getSql()
         logging.debug('getFrame: %s', sql)
         return self.getDataWithCache(sql)
+
+    def filterTime(self, start=None, end=None):
+        timestampField = 'timestamp'  # FIX: don't hard code
+        result = self
+        if start:
+            result = result.filter(**{timestampField + '__gte': start})
+        if end:
+            result = result.filter(**{timestampField + '__lte': end})
+        return result
 
     def rejectOutliers(self, fieldName,
                        percent=1,
@@ -207,6 +218,9 @@ class QuerySetLike(object):
 
     def filter(self, *args, **kwargs):
         return self._appendOp('filter', args, kwargs)
+
+    def filterTime(self, *args, **kwargs):
+        return self._appendOp('filterTime', args, kwargs)
 
     def __getitem__(self, k):
         return self._appendOp('__getitem__', [k], {})
@@ -313,8 +327,9 @@ def xscatter(x, y, c='b', *args, **kwargs):
 
 
 def xheatmap(x, y, bins=30, **kwargs):
-    heatmap, xedges, yedges = np.histogram2d(x,
-                                             y,
+    valid = np.logical_and(pd.notnull(x), pd.notnull(y))
+    heatmap, xedges, yedges = np.histogram2d(x[valid],
+                                             y[valid],
                                              bins=bins)
     heatmap = np.rot90(heatmap)  # histogram2d output is weird
     extent = [xedges[0], xedges[-1], yedges[0], yedges[-1]]
@@ -329,3 +344,19 @@ def xhist(x, **kwargs):
     plt.hist(x, **kwargs)
     _applyLabel(x, plt.xlabel)
     plt.ylabel('Counts')
+
+
+def _getFrameFromDataSet(dataSet):
+    for methodName in ('getFrame', '_getFrame'):
+        method = getattr(dataSet, methodName, None)
+        if method:
+            return method()
+    return dataSet
+
+
+def xjoin(dataSets, resample='30min'):
+    result = _getFrameFromDataSet(dataSets[0]).resample(resample)
+    for i, dataSet in enumerate(dataSets[1:]):
+        frame = _getFrameFromDataSet(dataSet).resample(resample)
+        result = result.join(frame, how='left', rsuffix='_%s' % i)
+    return result
