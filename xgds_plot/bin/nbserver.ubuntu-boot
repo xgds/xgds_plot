@@ -1,0 +1,92 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          nbserver
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: IPython notebook server
+# Description:       Starts the IPython notebook server
+### END INIT INFO
+
+# to install on ubuntu:
+# 1. copy this file to /etc/init.d/nbserver
+# 2. edit PROJ_ROOT
+# 3. 'update-rc.d nbserver defaults' so it runs on boot
+
+PROJ_ROOT=/usr/local/irg/releases/lakelander/xgds_lake_lander
+STARTCMD=${PROJ_ROOT}/apps/xgds_plot/bin/nbserver.sh
+DAEMON=ipython
+PROFILE_DIR=${PROJ_ROOT}/var/notebook/profile_default
+NBSERVER_PID_FILE=${PROFILE_DIR}/pid/nbserver.pid
+NBSERVER_LOG_FILE=${PROFILE_DIR}/log/nbserver.log
+
+test -x $STARTCMD || exit 0
+
+. /lib/init/vars.sh
+
+. /lib/lsb/init-functions
+
+nbserver_start() {
+    #--quiet --background
+    if start-stop-daemon --start \
+        --pidfile $NBSERVER_PID_FILE \
+        --user irg --group irg --chuid irg -b \
+        --exec $STARTCMD
+    then
+        rc=0
+        sleep 1
+        if ! kill -0 $(cat $NBSERVER_PID_FILE) >/dev/null 2>&1; then
+            log_failure_msg "nbserver daemon failed to start"
+            rc=1
+        fi
+    else
+        rc=1
+    fi
+    if [ $rc -eq 0 ]; then
+        log_end_msg 0
+    else
+        log_end_msg 1
+        rm -f $NBSERVER_PID_FILE
+    fi
+} # nbserver_start
+
+case "$1" in
+  start|"")
+	log_daemon_msg "Starting nbserver" "nbserver"
+	if [ -s $NBSERVER_PID_FILE ] && kill -0 $(cat $NBSERVER_PID_FILE) >/dev/null 2>&1; then
+	    log_progress_msg "apparently already running"
+	    log_end_msg 0
+	    exit 0
+	fi
+	nbserver_start
+	;;
+  stop)
+	log_daemon_msg "Stopping nbserver daemon" "nbserver"
+	start-stop-daemon --stop --quiet --oknodo --pidfile $NBSERVER_PID_FILE
+	log_end_msg $?
+	rm -f $NBSERVER_PID_FILE
+	;;
+  status)
+	status_of_proc -p $NBSERVER_PID_FILE "$DAEMON" nbserver
+	exit $?	# notreached due to set -e
+	;;
+  restart|reload|force-reload)
+	set +e
+	    log_daemon_msg "Restarting nbserver daemon" "nbserver"
+	    if [ -s $NBSERVER_PID_FILE ] && kill -0 $(cat $NBSERVER_PID_FILE) >/dev/null 2>&1; then
+		start-stop-daemon --stop --quiet --oknodo --pidfile $NBSERVER_PID_FILE || true
+		sleep 1
+	    else
+		log_warning_msg "nbserver daemon not running, attempting to start."
+	    	rm -f $NBSERVER_PID_FILE
+	    fi
+            nbserver_start
+	;;
+  *)
+	echo "Usage: nbserver start|stop|status|restart" >&2
+	exit 1
+	;;
+esac
+
+:

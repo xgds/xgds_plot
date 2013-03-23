@@ -5,7 +5,7 @@
 # control in this directory.
 
 THISDIR="$( cd "$( dirname "$0" )" && pwd )"
-PROJ_ROOT="$THISDIR/../../.."
+PROJ_ROOT="$THISDIR/../../../.."
 IPYTHONDIR=$PROJ_ROOT/var/notebook
 NBSERVER_PID_FILE=$IPYTHONDIR/profile_default/pid/nbserver.pid
 NBSERVER_LOG_FILE=$IPYTHONDIR/profile_default/log/nbserver.log
