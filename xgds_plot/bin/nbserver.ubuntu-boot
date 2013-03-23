@@ -15,7 +15,7 @@
 # 3. 'update-rc.d nbserver defaults' so it runs on boot
 
 PROJ_ROOT=/usr/local/irg/releases/lakelander/xgds_lake_lander
-STARTCMD=${PROJ_ROOT}/apps/xgds_plot/bin/nbserver.sh
+STARTCMD=${PROJ_ROOT}/submodules/xgds_plot/xgds_plot/bin/nbserver.sh
 DAEMON=ipython
 PROFILE_DIR=${PROJ_ROOT}/var/notebook/profile_default
 NBSERVER_PID_FILE=${PROFILE_DIR}/pid/nbserver.pid
