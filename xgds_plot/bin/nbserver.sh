@@ -4,7 +4,8 @@
 # An example version of the nbserver script can be found in version
 # control in this directory.
 
-PROJ_ROOT=/usr/local/irg/releases/xgds/xgds_isru
+THISDIR="$( cd "$( dirname "$0" )" && pwd )"
+PROJ_ROOT="$THISDIR/../../.."
 IPYTHONDIR=$PROJ_ROOT/var/notebook
 NBSERVER_PID_FILE=$IPYTHONDIR/profile_default/pid/nbserver.pid
 NBSERVER_LOG_FILE=$IPYTHONDIR/profile_default/log/nbserver.log

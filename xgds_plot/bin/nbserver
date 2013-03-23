@@ -16,11 +16,10 @@
 # Description:       Starts the IPython notebook server
 ### END INIT INFO
 
-# to run this script at boot on ubuntu, install it in
-# /etc/init.d and run the following:
-#   update-rc.d nbserver defaults
-
-# todo: make this a template that works across different sites
+# installation:
+# 1. copy to /etc/init.d
+# 2. edit PROJ_ROOT to match your deployment
+# 3. run 'chkconfig --add nbserver' to run automatically on boot
 
 PROJ_ROOT=/usr/local/irg/releases/xgds/xgds_isru
 IPYTHONDIR=$PROJ_ROOT/var/notebook
