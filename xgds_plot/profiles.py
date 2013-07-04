@@ -233,7 +233,7 @@ def getContourPlotImage(out, x, y, z,
     logging.info('getContourPlotImage: plotting data')
     ax = fig.gca()
     contours = ax.contourf(xi, yi, cappedZi, 256, norm=norm)
-    pylabUtil.setXaxisDateFormatter(ax)
+    pylabUtil.setXAxisDate()
 
     fig.colorbar(contours)
 
