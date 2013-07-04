@@ -32,7 +32,7 @@ import matplotlib.dates
 
 from geocamUtil.loader import getModelByName
 
-from xgds_plot import settings
+from xgds_plot import settings, pylabUtil
 from xgds_plot import csvutil
 from xgds_plot.csvutil import q
 
@@ -50,29 +50,6 @@ class Profile(object):
 
 def firstcaps(val):
     return val[0].upper() + val[1:]
-
-
-class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
-    def __call__(self, x, pos=0):
-        scale = float( self._locator._get_unit() )
-
-        d = matplotlib.dates.DateFormatter
-        if ( scale >= 365.0 ):
-            self._formatter = d("%Y", self._tz)
-        elif ( scale == 30.0 ):
-            self._formatter = d("%b %Y", self._tz)
-        elif ( (scale == 1.0) or (scale == 7.0) ):
-            self._formatter = d("%b %d", self._tz)
-        elif ( scale == (1.0/24.0) ):
-            self._formatter = d("%H:%M", self._tz)
-        elif ( scale == (1.0/(24*60)) ):
-            self._formatter = d("%H:%M", self._tz)
-        elif ( scale == (1.0/(24*3600)) ):
-            self._formatter = d("%M:%S", self._tz)
-        else:
-            self._formatter = d("%b %d %Y %H:%M:%S", self._tz)
-
-        return self._formatter(x, pos)
 
 
 PROFILES = []
@@ -256,11 +233,7 @@ def getContourPlotImage(out, x, y, z,
     logging.info('getContourPlotImage: plotting data')
     ax = fig.gca()
     contours = ax.contourf(xi, yi, cappedZi, 256, norm=norm)
-    ax.xaxis_date(tz=pytz.utc)
-    loc = matplotlib.dates.AutoDateLocator(interval_multiples=True)
-    ax.xaxis.set_major_locator(loc)
-    fmt = ShortDateFormatter(loc)
-    ax.xaxis.set_major_formatter(fmt)
+    pylabUtil.setXaxisDateFormatter(ax)
 
     fig.colorbar(contours)
 
