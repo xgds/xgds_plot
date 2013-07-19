@@ -15,7 +15,10 @@ import pandas.io.sql as psql
 import MySQLdb
 from django.conf import settings
 from django.db.models import get_app, get_models
-from matplotlib import pyplot as plt
+try:
+    from matplotlib import pyplot as plt
+except ImportError:
+    pass  # non-plotting functions should still work
 
 _djangoDbSettings = settings.DATABASES['default']
 DB_SETTINGS = dict(host=_djangoDbSettings['HOST'],
