@@ -36,6 +36,24 @@ def getDbConnection():
     return dbConnectionG
 
 
+def closeDbConnection():
+    """
+    If there is an active default db connection, try to close it.
+
+    May be useful to make long-running db clients more robust, avoiding
+    any problems with stale connections, for example if the db server is
+    restarted.
+    """
+    global dbConnectionG
+    if dbConnectionG:
+        try:
+            dbConnectionG.close()
+        except:
+            logging.warning('pandasUtil.closeDbConnection: unable to close dbConnectionG %s', dbConnectionG)
+            logging.warning('pandasUtil.closeDbConnection: will dereference current connection and use a new one')
+        dbConnectionG = None
+
+
 def quoteIfString(obj):
     if isinstance(obj, (str, unicode)):
         return '"%s"' % obj
@@ -88,6 +106,10 @@ class AbstractFrameSource(object):
         result = type(self)(self.model, self.parent)
         result.qset = copy.deepcopy(self.qset)
         return result
+
+    def reset(self):
+        self.qset = None
+        self.cache = {}
 
     def _getQset(self):
         if self.qset is None:
