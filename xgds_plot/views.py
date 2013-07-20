@@ -334,13 +334,13 @@ def getStaticPlot(request, seriesId):
     minTime = parseTime(request.GET.get('start', '-72'), offset)
     maxTime = parseTime(request.GET.get('end', 'now'), offset)
     assert minTime <= maxTime, 'HTTP GET parameters: start, end: start time must be before end time'
-    import sys; print >> sys.stderr, 'times:', minTime, maxTime
 
-    imgData = staticPlot.getPlotData(seriesId,
-                                     1000,
-                                     200,
-                                     javaStyle(minTime),
-                                     javaStyle(maxTime))
+    imgData = (staticPlot.getPlotDataMultiprocessing
+               (seriesId,
+                1000,
+                200,
+                javaStyle(minTime),
+                javaStyle(maxTime)))
     django.db.reset_queries()  # clear query log to reduce memory usage
     return HttpResponse(imgData,
                         mimetype='image/png')
