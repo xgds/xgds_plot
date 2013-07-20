@@ -14,9 +14,7 @@ import calendar
 
 from django.shortcuts import render_to_response
 from django.http import HttpResponse, \
-     HttpResponseRedirect, \
-     HttpResponseForbidden, \
-     Http404, \
+     HttpResponseNotFound, \
      HttpResponseBadRequest
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
@@ -28,7 +26,7 @@ from geocamUtil import KmlUtil
 from xgds_plot import settings
 from xgds_plot.plotUtil import parseTime
 try:
-    from xgds_plot import meta, tile, profiles
+    from xgds_plot import meta, tile, profiles, staticPlot
 except ImportError:
     print 'warning: scipy is not available; some views will not work'
 
@@ -326,3 +324,23 @@ def profilesPage(request):
                                'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,
                                'profiles': profiles.PROFILES},
                               context_instance=RequestContext(request))
+
+
+def getStaticPlot(request, seriesId):
+    if seriesId not in meta.TIME_SERIES_LOOKUP:
+        return HttpResponseNotFound('<h1>404 No time series named "%s"</h1>' % seriesId)
+
+    offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
+    minTime = parseTime(request.GET.get('start', '-72'), offset)
+    maxTime = parseTime(request.GET.get('end', 'now'), offset)
+    assert minTime <= maxTime, 'HTTP GET parameters: start, end: start time must be before end time'
+    import sys; print >> sys.stderr, 'times:', minTime, maxTime
+
+    imgData = staticPlot.getPlotData(seriesId,
+                                     1000,
+                                     200,
+                                     javaStyle(minTime),
+                                     javaStyle(maxTime))
+    django.db.reset_queries()  # clear query log to reduce memory usage
+    return HttpResponse(imgData,
+                        mimetype='image/png')

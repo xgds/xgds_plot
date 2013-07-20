@@ -44,4 +44,8 @@ urlpatterns = patterns(
     url(r'^profiles/',
         'profilesPage', {},
         'xgds_plot_profiles'),
+
+    url(r'staticPlot/(?P<seriesId>[^\.]+)\.png',
+        'getStaticPlot', {},
+        'xgds_plot_staticPlot'),
 )
