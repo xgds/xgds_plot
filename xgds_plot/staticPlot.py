@@ -74,6 +74,10 @@ def writePlotData(out,
         xmin = epochMsToMatPlotLib(minTime)
     if maxTime:
         xmax = epochMsToMatPlotLib(maxTime)
+    if ymin == 0 and ymax == 1:
+        # HACK styling special case
+        ymin = -0.1
+        ymax = 1.1
     ax.axis([xmin, xmax, ymin, ymax])
 
     pylabUtil.setXAxisDate()
