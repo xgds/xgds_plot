@@ -44,10 +44,15 @@ def epochMsToMatPlotLib(epochMs):
 
 def writePlotData(out,
                   seriesId,
-                  widthPix,
-                  heightPix,
+                  widthPix=None,
+                  heightPix=None,
                   minTime=None,
                   maxTime=None):
+    if widthPix is None:
+        widthPix = 800
+    if heightPix is None:
+        heightPix = 120
+
     xinch = float(widthPix) / 100
     yinch = float(heightPix) / 100
     fig = plt.figure()
@@ -100,8 +105,8 @@ def writePlotData(out,
 
 def savePlot(path,
              seriesId,
-             widthPix,
-             heightPix,
+             widthPix=None,
+             heightPix=None,
              minTime=None,
              maxTime=None):
     with open(path, 'wb') as out:
@@ -114,8 +119,8 @@ def savePlot(path,
 
 
 def getPlotData(seriesId,
-                widthPix,
-                heightPix,
+                widthPix=None,
+                heightPix=None,
                 minTime=None,
                 maxTime=None):
     out = StringIO()
@@ -129,8 +134,8 @@ def getPlotData(seriesId,
 
 
 def getPlotDataMultiprocessing(seriesId,
-                               widthPix,
-                               heightPix,
+                               widthPix=None,
+                               heightPix=None,
                                minTime=None,
                                maxTime=None):
     pool = multiprocessing.Pool(processes=1)
@@ -152,8 +157,8 @@ def testStaticPlot():
     for f in ('airPressure', 'relativeHumidity'):
         savePlot(path=f + '.png',
                  seriesId=f,
-                 widthPix=1000,
-                 heightPix=200,
+                 widthPix=None,
+                 heightPix=None,
                  minTime=ago,
                  maxTime=now)
 
