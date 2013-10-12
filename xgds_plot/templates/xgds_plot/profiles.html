@@ -46,11 +46,11 @@
   <div style="margin-top: 5px;">
     {{ p.name }}
     &nbsp;&nbsp;
-    <a href="{% url xgds_plot_profileCsv p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&fill=0">[sparse csv]</a>
+    <a href="{% url 'xgds_plot_profileCsv' p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&fill=0">[sparse csv]</a>
     &nbsp;&nbsp;
-    <a href="{% url xgds_plot_profileCsv p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&fill=1">[filled-in csv]</a>
+    <a href="{% url 'xgds_plot_profileCsv' p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&fill=1">[filled-in csv]</a>
   </div>
-  <img src="{% url xgds_plot_profileRender p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&pts={{ showSamplePoints }}"/>
+  <img src="{% url 'xgds_plot_profileRender' p.valueCode %}?start={{ minTime }}&end={{ maxTime }}&pts={{ showSamplePoints }}"/>
 {% endfor %}
 
 {% endblock %}
