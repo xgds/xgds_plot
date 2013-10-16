@@ -1,18 +1,14 @@
 #!/usr/bin/env python
 
-import time
-import datetime
-import os
 import sys
 import atexit
 
 from zmq.eventloop import ioloop
 ioloop.install()
 
-from geocamUtil.zmq.subscriber import ZmqSubscriber
-from geocamUtil.zmq.util import zmqLoop, getTimestampFields
+from geocamUtil.zmqUtil.subscriber import ZmqSubscriber
+from geocamUtil.zmqUtil.util import zmqLoop
 
-from xgds_plot import settings
 from xgds_plot.meta import TIME_SERIES, TIME_SERIES_LOOKUP
 from xgds_plot.segmentIndex import SegmentIndex
 
@@ -53,6 +49,7 @@ class XgdsPlotIndexer(object):
     def clean(self):
         for index in self.indexes.itervalues():
             index.clean()
+
 
 def main():
     import optparse

@@ -7,6 +7,7 @@
 from xgds_plot.segment import ScalarSegment, RatioSegment
 from xgds_plot.tile import ScalarTile, RatioTile
 
+
 class Scalar(object):
     makeSegment = ScalarSegment
     makeTile = ScalarTile

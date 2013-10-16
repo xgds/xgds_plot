@@ -5,8 +5,6 @@
 # __END_LICENSE__
 
 import logging
-import sys
-from itertools import izip
 import copy
 
 import numpy as np
@@ -14,11 +12,12 @@ import pandas as pd
 import pandas.io.sql as psql
 import MySQLdb
 from django.conf import settings
-from django.db.models import get_app, get_models
 try:
     from matplotlib import pyplot as plt
 except ImportError:
     pass  # non-plotting functions should still work
+
+# pylint: disable=R0924,W0108
 
 _djangoDbSettings = settings.DATABASES['default']
 DB_SETTINGS = dict(host=_djangoDbSettings['HOST'],
@@ -51,7 +50,7 @@ def closeDbConnection():
     if dbConnectionG:
         try:
             dbConnectionG.close()
-        except:
+        except:  # pylint: disable=W0702
             logging.warning('pandasUtil.closeDbConnection: unable to close dbConnectionG %s', dbConnectionG)
             logging.warning('pandasUtil.closeDbConnection: will dereference current connection and use a new one')
         dbConnectionG = None
@@ -70,12 +69,12 @@ def rejectOutliers(frame, fieldName,
                    rejectHigh=True):
     field = getattr(frame, fieldName)
     lo, hi = np.percentile(field, [percent, 100 - percent])
-    filter = True
+    filt = True
     if rejectLow:
-        filter = np.logical_and(filter, lo <= field)
+        filt = np.logical_and(filt, lo <= field)
     if rejectHigh:
-        filter = np.logical_and(filter, field <= hi)
-    return frame[filter]
+        filt = np.logical_and(filt, field <= hi)
+    return frame[filt]
 
 
 class AbstractFrameSource(object):

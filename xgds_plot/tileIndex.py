@@ -5,13 +5,11 @@
 # __END_LICENSE__
 
 import os
-import sys
 from collections import deque
 import time
 
 from django import db
 import numpy
-from scipy.ndimage import filters
 from scipy.misc import pilutil
 import matplotlib
 matplotlib.use('Agg')  # non-interactive png plotting backend
@@ -19,7 +17,6 @@ from matplotlib import pyplot, mpl
 import matplotlib.cm
 from PIL import Image
 
-from geocamUtil import anyjson as json
 from geocamUtil.loader import getClassByName
 from geocamUtil import TimeUtil
 
@@ -37,8 +34,8 @@ BATCH_SLEEP_NUM_SAMPLES = 100
 
 class TileIndex(object):
     @classmethod
-    def getTileKey(cls, valueCode, tile):
-        level, x, y = tile
+    def getTileKey(cls, valueCode, tileTuple):
+        level, x, y = tileTuple
         return '%s_%s_%s_%s' % (valueCode, level, x, y)
 
     @classmethod
@@ -75,6 +72,11 @@ class TileIndex(object):
 
         self.queue = deque()
         self.running = False
+        self.status = None
+        self.statusPath = None
+        self.statusStore = None
+        self.poseCollector = None
+        self.batchProcessStartTime = None
 
     def start(self):
         self.queryManager.subscribeDjango(self.parent.subscriber,
@@ -132,8 +134,8 @@ class TileIndex(object):
             self.indexRecord(obj)
 
     def indexRecord(self, obj):
-        if (self.queueMode
-            and (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
+        if (self.queueMode and
+                (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
             batchProcessDuration = time.time() - self.batchProcessStartTime
             if settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR > 0:
                 sleepTime = batchProcessDuration * settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR

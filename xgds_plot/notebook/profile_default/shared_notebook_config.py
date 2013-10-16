@@ -12,9 +12,9 @@ non-version-controlled file ipython_notebook_config.py where you can
 override settings on a site-specific basis.
 """
 
-import os
-
 from django.conf import settings
+
+# pylint: disable=E0602
 
 c = get_config()
 c.NotebookManager.notebook_dir = settings.PROJ_ROOT + 'data/notebook/'

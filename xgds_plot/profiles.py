@@ -6,11 +6,7 @@
 # __END_LICENSE__
 
 import datetime
-import calendar
-import iso8601
 import logging
-import csv
-import calendar
 import multiprocessing
 try:
     from cStringIO import StringIO
@@ -20,14 +16,12 @@ except ImportError:
 import numpy as np
 import scipy
 import matplotlib
-import pytz
 
 # must set matplotlib mode before importing pylab to suppress errors
 matplotlib.interactive(False)
 matplotlib.use('agg')
 
 from matplotlib import pyplot as plt
-from matplotlib import ticker
 import matplotlib.dates
 
 from geocamUtil.loader import getModelByName
@@ -35,6 +29,8 @@ from geocamUtil.loader import getModelByName
 from xgds_plot import settings, pylabUtil
 from xgds_plot import csvutil
 from xgds_plot.csvutil import q
+
+# pylint: disable=W0201
 
 TIME_OFFSET0 = csvutil.TIME_OFFSET0
 TIME_OFFSET = csvutil.TIME_OFFSET
@@ -54,23 +50,28 @@ def firstcaps(val):
 
 PROFILES = []
 PROFILE_LOOKUP = {}
-for profileMeta in settings.XGDS_PLOT_PROFILES:
-    profile = Profile()
-    profile.valueField = profileMeta['valueField']
-    profile.valueCode = profile.valueField
-    profile.model = getModelByName(profileMeta['queryModel'])
-    profile.timestampField = profileMeta['queryTimestampField']
-    profile.zField = profileMeta['queryZField']
-    profile.filter = profileMeta['queryFilter']
 
-    fields = profile.model._meta._field_name_cache
-    fieldLookup = dict([(f.name, f) for f in fields])
-    profile.name = firstcaps(fieldLookup[profile.valueField].verbose_name)
-    profile.timeLabel = firstcaps(fieldLookup[profile.timestampField].verbose_name)
-    profile.zLabel = firstcaps(fieldLookup[profile.zField].verbose_name)
 
-    PROFILES.append(profile)
-    PROFILE_LOOKUP[profile.valueField] = profile
+def initProfiles():
+    for profileMeta in settings.XGDS_PLOT_PROFILES:
+        profile = Profile()
+        profile.valueField = profileMeta['valueField']
+        profile.valueCode = profile.valueField
+        profile.model = getModelByName(profileMeta['queryModel'])
+        profile.timestampField = profileMeta['queryTimestampField']
+        profile.zField = profileMeta['queryZField']
+        profile.filter = profileMeta['queryFilter']
+
+        fields = profile.model._meta._field_name_cache
+        fieldLookup = dict([(f.name, f) for f in fields])
+        profile.name = firstcaps(fieldLookup[profile.valueField].verbose_name)
+        profile.timeLabel = firstcaps(fieldLookup[profile.timestampField].verbose_name)
+        profile.zLabel = firstcaps(fieldLookup[profile.zField].verbose_name)
+
+        PROFILES.append(profile)
+        PROFILE_LOOKUP[profile.valueField] = profile
+
+initProfiles()
 
 
 def pigeonHole(xp, yp, xi, yi):
@@ -81,8 +82,8 @@ def pigeonHole(xp, yp, xi, yi):
     ix = int((xp - x0) / dx + 0.5)
     iy = int((yp - y0) / dy + 0.5)
     ny, nx = xi.shape
-    if ((ix < nx)
-        and (0 <= iy < ny)):
+    if ((ix < nx) and
+            (0 <= iy < ny)):
         if ix < 0:
             ix = 0
         return iy, ix
@@ -128,7 +129,7 @@ def griddata(x, y, z, xi, yi, fillRight=True):
 
 
 def getRawRecs(profile, minTime=None, maxTime=None):
-    q = profile.model.objects.all()
+    qs = profile.model.objects.all()
     filterKwargs = {}
     for field, val in profile.filter:
         filterKwargs[field] = val
@@ -136,8 +137,8 @@ def getRawRecs(profile, minTime=None, maxTime=None):
         filterKwargs[profile.timestampField + '__gte'] = minTime
     if maxTime is not None:
         filterKwargs[profile.timestampField + '__lte'] = maxTime
-    q = q.filter(**filterKwargs)
-    return q
+    qs = qs.filter(**filterKwargs)
+    return qs
 
 
 def getValueTuples(profile, rawRecs):
@@ -453,7 +454,7 @@ def testProfiles():
 def main():
     import optparse
     parser = optparse.OptionParser('usage: %prog')
-    opts, args = parser.parse_args()
+    _opts, args = parser.parse_args()
     if args:
         parser.error('expected no args')
     logging.basicConfig(level=logging.DEBUG)

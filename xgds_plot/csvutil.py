@@ -5,7 +5,6 @@ import calendar
 from xgds_plot import settings
 
 try:
-    datetime.timedelta().total_seconds
     def total_seconds(delta):
         return delta.total_seconds()
 except AttributeError:
@@ -25,12 +24,10 @@ def q(s):
 def getTimeHeaders():
     return (['timestamp',
              'timestampLocalized',
-             'timestampEpoch',
-             ],
+             'timestampEpoch'],
             ['Timestamp (UTC)',
              'Timestamp (%s)' % settings.XGDS_PLOT_TIME_ZONE_NAME,
-             'Timestamp (seconds since Unix epoch)',
-            ])
+             'Timestamp (seconds since Unix epoch)'])
 
 
 def getTimeVals(localizedDt):

@@ -19,7 +19,6 @@ management/appCommands/prep.py command for each app (if it exists).
 """
 
 import os
-import logging
 import shutil
 
 from django.core.management.base import NoArgsCommand
@@ -44,7 +43,7 @@ class Command(NoArgsCommand):
 
     def generateNotebookDir(self, builder, appDir):
         assert geocamUtilSettings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
-               'generateNotebookDir: very error-prone if not using symlinks'
+            'generateNotebookDir: very error-prone if not using symlinks'
         profileDir = os.path.join(appDir, 'notebook', 'profile_default')
         siteConfig = os.path.join(profileDir, 'ipython_notebook_config.py')
 

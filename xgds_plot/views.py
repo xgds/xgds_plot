@@ -7,15 +7,15 @@
 import os
 import time
 from cStringIO import StringIO
-import re
 import datetime
-import iso8601
 import calendar
+import tempfile
+import logging
 
 from django.shortcuts import render_to_response
-from django.http import HttpResponse, \
-     HttpResponseNotFound, \
-     HttpResponseBadRequest
+from django.http import (HttpResponse,
+                         HttpResponseNotFound,
+                         HttpResponseBadRequest)
 from django.template import RequestContext
 from django.core.urlresolvers import reverse
 import django.db
@@ -31,8 +31,16 @@ except ImportError:
     print 'warning: scipy is not available; some views will not work'
 
 MAP_DATA_PATH = os.path.join(settings.DATA_URL,
-                         settings.XGDS_PLOT_DATA_SUBDIR,
-                         'map')
+                             settings.XGDS_PLOT_DATA_SUBDIR,
+                             'map')
+
+
+def dosys(cmd):
+    logging.info(cmd)
+    ret = os.system(cmd)
+    if ret != 0:
+        logging.warning('command exited with non-zero return value %s', ret)
+    return ret
 
 
 def dumps(obj):
@@ -47,6 +55,7 @@ def getMeta(request):
 def now(request):
     return HttpResponse(unicode(int(time.time() * 1000)).encode('utf-8'),
                         mimetype='text/plain; charset="utf-8"')
+
 
 def plots(request):
     timeSeriesNamesString = request.GET.get('s')
@@ -84,6 +93,7 @@ def plots(request):
                               {'settings': dumps(exportSettings),
                                'requestParams': dumps(requestParams)},
                               context_instance=RequestContext(request))
+
 
 def mapIndexKml(request):
     out = StringIO()
@@ -178,9 +188,10 @@ def mapTileKml(request, layerId, level, x, y):
     <viewRefreshMode>onRegion</viewRefreshMode>
   </Link>
 </NetworkLink>
-""" % dict(box=tile.getLatLonAltBox(tile.getTileBounds(subLevel, subX, subY)),
-           subUrl=subUrl,
-           minLodPixels=settings.XGDS_PLOT_MAP_PIXELS_PER_TILE // 2))
+""" %
+                            dict(box=tile.getLatLonAltBox(tile.getTileBounds(subLevel, subX, subY)),
+                                 subUrl=subUrl,
+                                 minLodPixels=settings.XGDS_PLOT_MAP_PIXELS_PER_TILE // 2))
         netLinks = '\n'.join(linkList)
     else:
         netLinks = ''

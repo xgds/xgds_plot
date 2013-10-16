@@ -5,36 +5,35 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
-import logging
-
 import numpy as np
 import scipy as sp
-import scipy.interpolate
 import pytz
 import matplotlib.dates
 import django.db.models
 from matplotlib import pyplot as plt
 
-from xgds_plot.plotUtil import *
+from xgds_plot.plotUtil import *  # pylint: disable=W0401
 from xgds_plot import settings
+
+# pylint: disable=E1101,W0201,R0924,W0108
 
 
 class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
     def __call__(self, x, pos=0):
-        scale = float( self._locator._get_unit() )
+        scale = float(self._locator._get_unit())
 
         d = matplotlib.dates.DateFormatter
-        if ( scale >= 365.0 ):
+        if (scale >= 365.0):
             self._formatter = d("%Y", self._tz)
-        elif ( scale == 30.0 ):
+        elif (scale == 30.0):
             self._formatter = d("%b %Y", self._tz)
-        elif ( (scale == 1.0) or (scale == 7.0) ):
+        elif ((scale == 1.0) or (scale == 7.0)):
             self._formatter = d("%b %d", self._tz)
-        elif ( scale == (1.0/24.0) ):
+        elif (scale == (1.0 / 24.0)):
             self._formatter = d("%H:%M", self._tz)
-        elif ( scale == (1.0/(24*60)) ):
+        elif (scale == (1.0 / (24 * 60))):
             self._formatter = d("%H:%M", self._tz)
-        elif ( scale == (1.0/(24*3600)) ):
+        elif (scale == (1.0 / (24 * 3600))):
             self._formatter = d("%M:%S", self._tz)
         else:
             self._formatter = d("%b %d %Y %H:%M:%S", self._tz)

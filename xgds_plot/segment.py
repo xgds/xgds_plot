@@ -22,6 +22,7 @@ LAST_DENOM_ZERO_WARNING_TIME = 0
 
 HUGE_VALUE = 99e+20
 
+
 class ScalarSegment(object):
     def __init__(self):
         self.n = settings.XGDS_PLOT_SEGMENT_RESOLUTION

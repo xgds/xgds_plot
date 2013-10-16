@@ -10,13 +10,8 @@ Runs the IPython Notebook with settings linked to this xGDS installation.
 
 import os
 import logging
-import shutil
 
 from django.core.management.base import NoArgsCommand
-
-from geocamUtil.Builder import Builder
-from geocamUtil.Installer import Installer
-from geocamUtil import settings as geocamUtilSettings
 
 from xgds_plot import settings
 
@@ -25,7 +20,7 @@ def dosys(cmd):
     logging.info(cmd)
     ret = os.system(cmd)
     if ret != 0:
-        logging.warning('command exited with non-zero return value %s' % ret)
+        logging.warning('command exited with non-zero return value %s', ret)
     return ret
 
 

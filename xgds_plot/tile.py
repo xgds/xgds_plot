@@ -7,16 +7,9 @@
 import os
 import math
 import sys
-import tempfile
-from cStringIO import StringIO
-
-from django.core.urlresolvers import reverse
-from django.http import HttpResponse
 
 import numpy
 from scipy.ndimage import filters
-
-from geocamUtil import KmlUtil
 
 from xgds_plot import settings
 
@@ -27,6 +20,7 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
                          'map')
 
 N = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE
+
 
 def dosys(cmd):
     ret = os.system(cmd)
@@ -70,8 +64,8 @@ def getTileContainingBounds(bounds):
     while 1:
         x, y = getTileContainingPoint(level, west, south)
         _tileWest, _tileSouth, tileEast, tileNorth = getTileBounds(level, x, y)
-        if (east <= tileEast + settings.XGDS_PLOT_MAP_TILE_EPS
-            and north <= tileNorth + settings.XGDS_PLOT_MAP_TILE_EPS):
+        if (east <= tileEast + settings.XGDS_PLOT_MAP_TILE_EPS and
+                north <= tileNorth + settings.XGDS_PLOT_MAP_TILE_EPS):
             break
         level -= 1
     return level, x, y
@@ -79,7 +73,7 @@ def getTileContainingBounds(bounds):
 
 def getTilesOverlappingBounds(bounds, levels=None):
     zoomMin, zoomMax = settings.XGDS_PLOT_MAP_ZOOM_RANGE
-    if levels == None:
+    if levels is None:
         levels = xrange(zoomMin, zoomMax)
     west, south, east, north = bounds
     for level in levels:
@@ -117,10 +111,6 @@ def getMetersPerPixel(level):
     metersPerTile = radiansPerTile * EARTH_RADIUS_METERS
     return metersPerTile / settings.XGDS_PLOT_MAP_PIXELS_PER_TILE
 
-class DotDict(object):
-    def __init__(self, **kwargs):
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
 
 class ScalarTile(object):
     @classmethod
@@ -158,6 +148,7 @@ class ScalarTile(object):
         result[alpha < 0.1] = 0
 
         return result, alpha
+
 
 class RatioTile(ScalarTile):
     def __init__(self, tileParams, smoothingMeters, opaqueWeight):

@@ -4,6 +4,8 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+# pylint: disable=W0105
+
 XGDS_ZMQ_WEB_SOCKET_URL = 'ws://{{host}}:8001/zmq/'
 
 # include trailing slash but no leading slash
@@ -37,7 +39,7 @@ XGDS_PLOT_CHECK_FOR_NEW_DATA = True
 XGDS_PLOT_MAP_TILE_EPS = 1e-9
 XGDS_PLOT_MAP_PIXELS_PER_TILE = 256
 XGDS_PLOT_MAP_BBOX = [-155.470761, 19.756284,
-                        -155.463084, 19.763668]
+                      -155.463084, 19.763668]
 
 # zoom in interval [MIN_ZOOM, MAX_ZOOM)
 XGDS_PLOT_MAP_ZOOM_RANGE = (14, 22)

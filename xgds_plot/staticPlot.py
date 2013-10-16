@@ -13,7 +13,6 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-import pandas as pd
 import matplotlib
 
 # must set matplotlib mode before importing pylab to suppress errors
@@ -166,7 +165,7 @@ def testStaticPlot():
 def main():
     import optparse
     parser = optparse.OptionParser('usage: %prog')
-    opts, args = parser.parse_args()
+    _opts, args = parser.parse_args()
     if args:
         parser.error('expected no args')
     logging.basicConfig(level=logging.DEBUG)

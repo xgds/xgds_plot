@@ -30,6 +30,7 @@ def expandTimeSeriesMeta(meta):
         raise ValueError('expandTimeSeriesMeta: unknown meta type %s'
                          % mtype)
 
+
 def flattenTimeSeriesMeta(group):
     """
     Turns a tree of Group and TimeSeries into a flattened list of
@@ -48,6 +49,7 @@ def flattenTimeSeriesMeta(group):
                              % mtype)
     return result
 
+
 def setupTimeSeries():
     """
     Process the XGDS_PLOT_TIME_SERIES setting. Normalize and fill in
@@ -61,10 +63,10 @@ def setupTimeSeries():
         queryClass = getClassByName(series['queryType'])
         queryManager = queryClass(series)
         valueClass = getClassByName(series['valueType'])
-        valueManager = valueClass(series, queryManager)
+        _valueManager = valueClass(series, queryManager)
 
     return metaList
 
 TIME_SERIES = setupTimeSeries()
-TIME_SERIES_LOOKUP = dict([(m['valueCode'], m)
-                           for m in TIME_SERIES])
+TIME_SERIES_LOOKUP = dict([(_m['valueCode'], _m)
+                           for _m in TIME_SERIES])

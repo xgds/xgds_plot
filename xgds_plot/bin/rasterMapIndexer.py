@@ -12,10 +12,10 @@ import atexit
 from zmq.eventloop import ioloop
 ioloop.install()
 
-from geocamUtil.zmq.util import zmqLoop
-from geocamUtil.zmq.subscriber import ZmqSubscriber
+from geocamUtil.zmqUtil.util import zmqLoop
+from geocamUtil.zmqUtil.subscriber import ZmqSubscriber
 from geocamUtil.store import FileStore, LruCacheStore
-from geocamUtil.zmq.delayBox import DelayBox
+from geocamUtil.zmqUtil.delayBox import DelayBox
 
 from xgds_plot.tileIndex import TileIndex
 from xgds_plot import settings, meta, plotUtil
@@ -25,6 +25,7 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
                          'map')
 
 MAX_TILES_IN_MEMORY = 100
+
 
 class RasterMapIndexer(object):
     def __init__(self, opts):

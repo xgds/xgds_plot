@@ -20,6 +20,7 @@ FLOAT_REGEX = re.compile(r'^-?\d+(\.\d*)?$')
 # extra digits when floats are embedded in JSON objects.
 # http://stackoverflow.com/questions/1447287/format-floats-with-standard-json-module
 
+
 class CompactFloat(float):
     def __repr__(self):
         return '%.15g' % self
@@ -29,9 +30,9 @@ def compactFloats(obj):
     if isinstance(obj, float):
         return CompactFloat(obj)
     elif isinstance(obj, dict):
-        return dict((k, compactFloats(v)) for k, v in obj.items())
+        return {k: compactFloats(v) for k, v in obj.iteritems()}
     elif isinstance(obj, (list, tuple)):
-        return map(compactFloats, obj)
+        return [compactFloats(o) for o in obj]
     return obj
 
 

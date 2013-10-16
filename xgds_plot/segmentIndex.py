@@ -6,9 +6,6 @@
 
 import os
 import math
-import numpy
-import shutil
-import sys
 from collections import deque
 import time
 
@@ -17,7 +14,7 @@ from django import db
 from geocamUtil import anyjson as json
 from geocamUtil.loader import getClassByName
 from geocamUtil.store import FileStore, LruCacheStore
-from geocamUtil.zmq.delayBox import DelayBox
+from geocamUtil.zmqUtil.delayBox import DelayBox
 
 from xgds_plot import settings
 from xgds_plot import plotUtil
@@ -37,6 +34,7 @@ SEGMENTS_IN_MEMORY_PER_TIME_SERIES = 100
 BATCH_READ_NUM_SAMPLES = 5000
 BATCH_SLEEP_NUM_SAMPLES = 100
 
+
 class SegmentIndex(object):
     @classmethod
     def getKeyFromSegmentIndex(cls, segmentIndex):
@@ -52,7 +50,6 @@ class SegmentIndex(object):
     def getBucketIndexContainingTime(cls, level, posixTimeMs):
         segmentLength = 2.0 ** level
         segVal = posixTimeMs / segmentLength
-        segmentNum = int(segVal)
         bucketIndex = int((segVal - int(segVal)) * settings.XGDS_PLOT_SEGMENT_RESOLUTION)
         return bucketIndex
 
@@ -87,6 +84,11 @@ class SegmentIndex(object):
 
         self.queue = deque()
         self.running = False
+        self.status = None
+        self.statusPath = None
+        self.statusStore = None
+        self.store = None
+        self.batchProcessStartTime = None
 
     def start(self):
         self.store = LruCacheStore(FileStore(self.cacheDir),
@@ -132,8 +134,8 @@ class SegmentIndex(object):
             self.indexRecord(obj)
 
     def indexRecord(self, obj):
-        if (self.queueMode
-            and (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
+        if (self.queueMode and
+                (self.status['numSamples'] % BATCH_SLEEP_NUM_SAMPLES) == 0):
             batchProcessDuration = time.time() - self.batchProcessStartTime
             if settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR > 0:
                 sleepTime = batchProcessDuration * settings.XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR
@@ -171,12 +173,14 @@ class SegmentIndex(object):
         except KeyError:
             segmentData = self.valueManager.makeSegment()
             self.status['numSegments'] += 1
-        level, t = segmentIndex
+        level, _t = segmentIndex
         bucketIndex = self.getBucketIndexContainingTime(level, posixTimeMs)
         segmentData.addSample(bucketIndex, posixTimeMs, val)
         self.store[segmentKey] = segmentData
 
-    def writeJsonWithTmp(self, outPath, obj, styleArgs={}):
+    def writeJsonWithTmp(self, outPath, obj, styleArgs=None):
+        if styleArgs is None:
+            styleArgs = {}
         tmpPath = outPath + '.part'
         json.dump(plotUtil.compactFloats(obj),
                   open(tmpPath, 'wb'),

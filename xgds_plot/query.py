@@ -4,10 +4,11 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
-import re
-
 from geocamUtil.loader import getModelByName
 from geocamUtil import TimeUtil
+
+# pylint: disable=W0231
+
 
 def posixTimeMsToUtcDateTime(posixTimeMs):
     return TimeUtil.posixToUtcDateTime(posixTimeMs / 1000.0)
@@ -32,7 +33,7 @@ class TimeSeriesQueryManager(object):
         """
         raise NotImplementedError()
 
-    def getData(minTime=None, maxTime=None):
+    def getData(self, minTime=None, maxTime=None):
         """
         Return an iterable containing the records in the specified time
         interval, in order of increasing time. Both @minTime and
@@ -68,7 +69,7 @@ class Django(TimeSeriesQueryManager):
         self.filterDict = dict(meta.get('queryFilter', []))
         self.queryTopic = meta['queryModel']
         queryFilter = meta.get('queryFilter', [])
-        for field, value in queryFilter:
+        for _field, value in queryFilter:
             self.queryTopic += '.%s' % value
         self.queryTopic += ':'
 
