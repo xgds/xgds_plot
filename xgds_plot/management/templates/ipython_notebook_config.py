@@ -12,6 +12,8 @@ is specified in shared_notebook_config.py.
 This file must not be checked into version control!
 """
 
+# pylint: disable=E0602
+
 # load shared settings from shared_notebook_config.py in this directory
 load_subconfig('shared_notebook_config.py')
 
