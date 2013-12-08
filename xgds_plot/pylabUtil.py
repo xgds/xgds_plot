@@ -41,9 +41,17 @@ class ShortDateFormatter(matplotlib.dates.AutoDateFormatter):
         return self._formatter(x, pos)
 
 
+def getAutoDateLocator():
+    try:
+        return matplotlib.dates.AutoDateLocator(interval_multiples=True)
+    except TypeError:
+        # some versions of matplotlib don't understand interval_multiples
+        return matplotlib.dates.AutoDateLocator()
+
+
 def setXAxisDateFormatter(ax):
     ax.xaxis_date(tz=pytz.utc)
-    loc = matplotlib.dates.AutoDateLocator(interval_multiples=True)
+    loc = getAutoDateLocator()
     ax.xaxis.set_major_locator(loc)
     fmt = ShortDateFormatter(loc)
     ax.xaxis.set_major_formatter(fmt)
@@ -358,7 +366,7 @@ def setAxisDate(axisName):
     elif axisName == 'y':
         ax.yaxis_date(tz=pytz.utc)
         selectedAxis = ax.yaxis
-    loc = matplotlib.dates.AutoDateLocator(interval_multiples=True)
+    loc = getAutoDateLocator()
     selectedAxis.set_major_locator(loc)
     fmt = ShortDateFormatter(loc)
     selectedAxis.set_major_formatter(fmt)
