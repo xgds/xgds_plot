@@ -11,6 +11,8 @@ import time
 
 from xgds_plot import settings
 
+# pylint: disable=E1101
+
 MIN_SEGMENT_LENGTH_MS = (settings.XGDS_PLOT_MIN_DATA_INTERVAL_MS
                          * settings.XGDS_PLOT_SEGMENT_RESOLUTION)
 

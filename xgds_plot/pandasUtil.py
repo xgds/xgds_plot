@@ -17,7 +17,7 @@ try:
 except ImportError:
     pass  # non-plotting functions should still work
 
-# pylint: disable=R0924,W0108
+# pylint: disable=R0924,W0108,E1101
 
 _djangoDbSettings = settings.DATABASES['default']
 DB_SETTINGS = dict(host=_djangoDbSettings['HOST'],

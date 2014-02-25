@@ -48,7 +48,7 @@ XGDS_PLOT_MAP_ZOOM_RANGE = (14, 22)
 XGDS_PLOT_BATCH_SLEEP_TIME_FACTOR = 3
 
 # Specifies which time series are available for plotting. See example below.
-XGDS_PLOT_TIME_SERIES = ()
+XGDS_PLOT_TIME_SERIES = {}
 
 """
 

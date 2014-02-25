@@ -55,6 +55,9 @@ def setupTimeSeries():
     Process the XGDS_PLOT_TIME_SERIES setting. Normalize and fill in
     default values as needed.
     """
+    if not settings.XGDS_PLOT_TIME_SERIES:
+        return []
+
     tree = expandTimeSeriesMeta(settings.XGDS_PLOT_TIME_SERIES)[0]
     metaList = flattenTimeSeriesMeta(tree)
     for series in metaList:

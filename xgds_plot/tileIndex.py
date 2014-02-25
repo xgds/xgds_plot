@@ -22,6 +22,8 @@ from geocamUtil import TimeUtil
 
 from xgds_plot import settings, tile, plotUtil
 
+# pylint: disable=E1101
+
 N = settings.XGDS_PLOT_MAP_PIXELS_PER_TILE
 
 DATA_PATH = os.path.join(settings.DATA_DIR,

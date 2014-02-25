@@ -5,6 +5,7 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+import os
 import datetime
 import logging
 import multiprocessing
@@ -12,6 +13,11 @@ try:
     from cStringIO import StringIO
 except ImportError:
     from StringIO import StringIO
+
+# avoid the following error on 'import matplotlib':
+# Failed to create /var/www/.matplotlib; consider setting MPLCONFIGDIR to a writable directory for matplotlib configuration data
+if os.environ.get('MPLCONFIGDIR') is None and os.environ.get('HOME').startswith('/var/www'):
+    os.environ['MPLCONFIGDIR'] = '/tmp'
 
 import numpy as np
 import scipy
@@ -30,7 +36,7 @@ from xgds_plot import settings, pylabUtil
 from xgds_plot import csvutil
 from xgds_plot.csvutil import q
 
-# pylint: disable=W0201
+# pylint: disable=W0201,E1101
 
 TIME_OFFSET0 = csvutil.TIME_OFFSET0
 TIME_OFFSET = csvutil.TIME_OFFSET

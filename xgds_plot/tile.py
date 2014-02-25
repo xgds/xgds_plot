@@ -13,9 +13,11 @@ from scipy.ndimage import filters
 
 from xgds_plot import settings
 
+# pylint: disable=E1101
+
 EARTH_RADIUS_METERS = 6371 * 1000
 METERS_PER_DEGREE = 2 * math.pi * EARTH_RADIUS_METERS / 360
-DATA_PATH = os.path.join(settings.DATA_DIR,
+DATA_PATH = os.path.join(settings.DATA_ROOT,
                          settings.XGDS_PLOT_DATA_SUBDIR,
                          'map')
 
