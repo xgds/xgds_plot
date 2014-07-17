@@ -22,15 +22,15 @@ urlpatterns = patterns(
         name='xgds_plot_now'),
 
     url(r'^mapIndex\.kml$',
-        'mapIndexKml', {},
+        'mapIndexKml', {'loginRequired': False},
         'xgds_plot_mapIndexKml'),
 
     url(r'^mapLayer_(?P<layerId>[^\.]+)\.kml$',
-        'mapKml', {},
+        'mapKml', {'loginRequired': False},
         'xgds_plot_mapKml'),
 
     url(r'^mapTile/(?P<layerId>[^/]+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
-        'mapTileKml', {},
+        'mapTileKml', {'loginRequired': False},
         'xgds_plot_mapTileKml'),
 
     url(r'^profile/(?P<layerId>[^\.]*)\.png$',
