@@ -65,6 +65,7 @@ class Django(TimeSeriesQueryManager):
 
         self.timestampField = meta['queryTimestampField']
         self.timestampMicrosecondsField = meta.get('queryTimestampMicrosecondsField', None)
+        self.timestampNanosecondsField = meta.get('queryTimestampNanosecondsField', None)
 
         self.filterDict = dict(meta.get('queryFilter', []))
         self.queryTopic = meta['queryModel']
@@ -92,7 +93,10 @@ class Django(TimeSeriesQueryManager):
         posixTimeMs = posixTimeSecs * 1000
         if self.timestampMicrosecondsField is not None:
             microseconds = getattr(obj, self.timestampMicrosecondsField)
-            posixTimeMs += microseconds / 1000.0
+            posixTimeMs += microseconds * 1e-3
+        elif self.timestampNanosecondsField is not None:
+            nanoseconds = getattr(obj, self.timestampNanosecondsField)
+            posixTimeMs += nanoseconds * 1e-6
         return posixTimeMs
 
     def subscribeDjango(self, subscriber, func):
