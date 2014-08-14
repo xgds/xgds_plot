@@ -11,6 +11,7 @@ import datetime
 import calendar
 import tempfile
 import logging
+import re
 
 from django.shortcuts import render_to_response
 from django.http import (HttpResponse,
@@ -89,6 +90,12 @@ def plots(request):
                     'XGDS_PLOT_TIME_ZONE_NAME'
                     )
     exportSettings = dict(((k, getattr(settings, k)) for k in exportFields))
+
+    if request.META['wsgi.url_scheme'] == 'https':
+        # must use secure WebSockets if web site is secure
+        exportSettings['XGDS_ZMQ_WEB_SOCKET_URL'] = re.sub(r'^ws:', 'wss:',
+                                                           exportSettings['XGDS_ZMQ_WEB_SOCKET_URL'])
+
     return render_to_response('xgds_plot/plots.html',
                               {'settings': dumps(exportSettings),
                                'requestParams': dumps(requestParams)},
