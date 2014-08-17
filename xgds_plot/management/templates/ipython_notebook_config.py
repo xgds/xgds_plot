@@ -20,13 +20,31 @@ load_subconfig('shared_notebook_config.py')
 ######################################################################
 # Add your modifications below this point
 
-# uncomment the section below to switch to https protocol on port
-# 8443. you'll need to generate your own SSL certificate.
+# Uncomment the section below for a production setup. It will turn on
+# password authentication, and tweak things to support proxied
+# connections coming in through Apache.
 
-#from IPython.lib import passwd as hashPassword
-#from xgds_plot import settings
+# c = get_config()
 
-#c.NotebookApp.ip = '*'
-#c.NotebookApp.port = 8443
-#c.NotebookApp.certfile = settings.VAR_ROOT + 'notebook/profile_default/security/cert.pem'
-#c.NotebookApp.password = hashPassword('...')
+# One password for all users. To generate a password hash to use here,
+# run the following:
+#   from IPython.lib import passwd
+#   passwd('your_password')
+#   [copy and paste output into the line below]
+
+# c.NotebookApp.password = u'... fill in output of passwd() method ...'
+
+# The Tornado server rejects "cross-origin" requests by default, for
+# security reasons. In our standard setup, the 'Origin' header in the
+# request from Apache to Tornado is 'https://yoursite.xgds.org', but
+# the request goes to Tornado over HTTP (HTTP != HTTPS), so we use the
+# 'allow_origin_pat' workaround (implemented in the iPython Notebook
+# code) to tell Tornado either protocol is ok.  See discussion at
+# https://github.com/ipython/ipython/issues/5525 .
+
+# c.NotebookApp.allow_origin_pat = 'https?://yoursite.xgds.org'
+
+# *Or* you can use this line to totally turn off Tornado's cross-origin
+# check.
+
+# c.NotebookApp.allow_origin = '*'  # ... at own risk

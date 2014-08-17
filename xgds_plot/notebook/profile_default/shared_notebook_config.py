@@ -19,3 +19,6 @@ from django.conf import settings
 c = get_config()
 c.NotebookManager.notebook_dir = settings.PROJ_ROOT + 'data/notebook/'
 c.IPKernelApp.pylab = 'inline'
+
+c.NotebookApp.base_url = '/notebook/'
+c.NotebookApp.base_kernel_url = '/notebook/'

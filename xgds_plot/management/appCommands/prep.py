@@ -60,6 +60,12 @@ class Command(NoArgsCommand):
         installer = Installer(builder)
         installProfileDir = os.path.join(settings.VAR_ROOT, 'notebook', 'profile_default')
         installer.installRecurse(profileDir, installProfileDir)
+        installer.installRecurse(os.path.join(appDir, 'notebook', 'nbextensions'),
+                                 os.path.join(settings.VAR_ROOT, 'notebook', 'nbextensions'))
+
+        dataDir = os.path.join(settings.DATA_ROOT, 'notebook')
+        if not os.path.exists(dataDir):
+            os.makedirs(dataDir)
 
         # symlink extra startup files
         startupDir = os.path.join(installProfileDir, 'startup')
