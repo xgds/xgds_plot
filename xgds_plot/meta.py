@@ -24,8 +24,10 @@ def expandTimeSeriesMeta(meta):
                 for m in getClassByName(meta['name'])]
     elif mtype == 'IncludeFunctionResultMeta':
         func = getClassByName(meta['name'])
-        return [expandTimeSeriesMeta(m)
-                for m in func()]
+        return reduce(operator.add,
+                      [expandTimeSeriesMeta(m)
+                       for m in func()],
+                      [])
     else:
         raise ValueError('expandTimeSeriesMeta: unknown meta type %s'
                          % mtype)
