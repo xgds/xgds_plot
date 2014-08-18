@@ -5,9 +5,16 @@
 # __END_LICENSE__
 
 from django.conf.urls import url, patterns
+from django.core.urlresolvers import reverse_lazy
+
+from django.views.generic.base import RedirectView
 
 urlpatterns = patterns(
     'xgds_plot.views',
+
+    url(r'^$',
+        RedirectView.as_view(url=reverse_lazy('xgds_plot_plots'), permanent=False), {},
+        name='xgds_plot_home'),
 
     url(r'^plots/$',
         'plots', {},

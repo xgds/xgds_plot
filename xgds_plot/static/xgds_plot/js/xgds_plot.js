@@ -629,9 +629,14 @@ $.extend(xgds_plot, {
             } else {
                 style = 'style="display: none"';
             }
+            if (info.meta.valueDetails) {
+                valueDetails = info.meta.valueDetails;
+            } else {
+                valueDetails = '';
+            }
             plotsHtml.push('<div id="plotContainer_' + i + '"' + style + '>' +
                            '<div id="plotLabel_' + i + '">' +
-                           info.meta.valueName +
+                           info.meta.valueName + valueDetails +
                            '<span class="plotInfo" id="plotInfo_' + i + '"></span>' +
                            '</div>' +
                            '<div id="plot_' + i + '" class="flotPlot"></div>' +
