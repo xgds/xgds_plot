@@ -318,8 +318,8 @@ $.extend(xgds_plot, {
         if (width == 0) {
             width = settings.XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS;
         }
-        return {min: serverNow - width,
-                max: serverNow};
+        return {min: serverNow - width + settings.XGDS_PLOT_LIVE_PLOT_FUTURE_TIME_MS,
+                max: serverNow + settings.XGDS_PLOT_LIVE_PLOT_FUTURE_TIME_MS};
     },
 
     setupPlotHandlers: function(info) {

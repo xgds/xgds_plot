@@ -28,7 +28,14 @@ XGDS_PLOT_MIN_DISPLAY_RESOLUTION = 384
 XGDS_PLOT_PRETTY_PRINT_JSON_SEGMENTS = False
 
 # in live mode, display this much history by default
-XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS = 120 * 1000
+XGDS_PLOT_LIVE_PLOT_HISTORY_LENGTH_MS = 2 * 60 * 1000
+
+# In live mode, keep the right hand side of the strip chart this far
+# ahead of the current time (according to the xGDS server). Setting
+# this to a non-zero amount can avoid an issue where new data appears
+# out of bounds to the right of the display time interval if the clock
+# on the data source is ahead of the clock on the xGDS server.
+XGDS_PLOT_LIVE_PLOT_FUTURE_TIME_MS = 20 * 1000
 
 # whether to start in live mode by default when plots screen is opened
 XGDS_PLOT_LIVE_MODE_DEFAULT = True

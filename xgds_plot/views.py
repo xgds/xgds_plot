@@ -87,7 +87,8 @@ def plots(request):
                     'XGDS_PLOT_LIVE_MODE_DEFAULT',
                     'XGDS_PLOT_CHECK_FOR_NEW_DATA',
                     'XGDS_PLOT_TIME_OFFSET_HOURS',
-                    'XGDS_PLOT_TIME_ZONE_NAME'
+                    'XGDS_PLOT_TIME_ZONE_NAME',
+                    'XGDS_PLOT_LIVE_PLOT_FUTURE_TIME_MS',
                     )
     exportSettings = dict(((k, getattr(settings, k)) for k in exportFields))
 
