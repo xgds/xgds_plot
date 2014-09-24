@@ -161,6 +161,11 @@ def writeMapKmlForDay(request, out, layerId, layerOpts, day, isToday):
   <NetworkLink>
     <name>%(name)s</name>
     <visibility>0</visibility>
+    <Style>
+      <ListStyle>
+        <listItemType>checkHideChildren</listItemType>
+      </ListStyle>
+    </Style>
     <Link>
       <href>%(initialTileUrl)s</href>
     </Link>
