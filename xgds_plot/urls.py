@@ -4,6 +4,8 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+# pylint: disable=E1120
+
 from django.conf.urls import url, patterns
 from django.core.urlresolvers import reverse_lazy
 
@@ -36,7 +38,7 @@ urlpatterns = patterns(
         'mapKml', {'loginRequired': False},
         'xgds_plot_mapKml'),
 
-    url(r'^mapTile/(?P<layerId>[^/]+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
+    url(r'^mapTile/(?P<layerId>[^/]+)/(?P<dayCode>\d+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
         'mapTileKml', {'loginRequired': False},
         'xgds_plot_mapTileKml'),
 

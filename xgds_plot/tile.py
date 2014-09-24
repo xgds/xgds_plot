@@ -73,7 +73,7 @@ def getTileContainingBounds(bounds):
     return level, x, y
 
 
-def getTilesOverlappingBounds(bounds, levels=None):
+def getTilesOverlappingBounds(dayCode, bounds, levels=None):
     zoomMin, zoomMax = settings.XGDS_PLOT_MAP_ZOOM_RANGE
     if levels is None:
         levels = xrange(zoomMin, zoomMax)
@@ -83,7 +83,7 @@ def getTilesOverlappingBounds(bounds, levels=None):
         xmax, ymax = getTileContainingPoint(level, east, north)
         for x in xrange(xmin, xmax + 1):
             for y in xrange(ymin, ymax + 1):
-                yield level, x, y
+                yield dayCode, level, x, y
 
 
 def getLatLonBox(bounds):
@@ -127,7 +127,7 @@ class ScalarTile(object):
 
         # even when zoomed all the way out, do minimal blurring of
         # 0.5 pixels to make data more visible
-        level, _x, _y = self.tileParams
+        _dayCode, level, _x, _y = self.tileParams
         self.sigmaPixels = max(0.5, self.smoothingMeters / getMetersPerPixel(level))
 
         self.numSum = numpy.zeros((N, N))

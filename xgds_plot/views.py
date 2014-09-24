@@ -12,6 +12,7 @@ import calendar
 import tempfile
 import logging
 import re
+import pytz
 
 from django.shortcuts import render_to_response
 from django.http import (HttpResponse,
@@ -23,6 +24,7 @@ import django.db
 
 from geocamUtil import anyjson as json
 from geocamUtil import KmlUtil
+from geocamUtil.loader import getClassByName
 
 from xgds_plot import settings
 from xgds_plot.plotUtil import parseTime
@@ -34,6 +36,17 @@ except ImportError:
 MAP_DATA_PATH = os.path.join(settings.DATA_URL,
                              settings.XGDS_PLOT_DATA_SUBDIR,
                              'map')
+
+
+OPS_TIME_ZONE = pytz.timezone(settings.XGDS_PLOT_OPS_TIME_ZONE)
+
+
+def utcToTz(t, tz=OPS_TIME_ZONE):
+    return pytz.utc.localize(t).astimezone(tz).replace(tzinfo=None)
+
+
+def tzToUtc(t, tz=OPS_TIME_ZONE):
+    return tz.localize(t).astimezone(pytz.utc).replace(tzinfo=None)
 
 
 def dosys(cmd):
@@ -130,27 +143,88 @@ def mapIndexKml(request):
     return KmlUtil.wrapKmlDjango(out.getvalue())
 
 
-def mapKml(request, layerId):
-    layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
+def writeMapKmlForDay(request, out, layerId, layerOpts, day, isToday):
+    if isToday:
+        dateStr = 'Today'
+    else:
+        dateStr = day.strftime('%Y-%m-%d')
+
     initialTile = tile.getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
     level, x, y = initialTile
+    dayCode = day.strftime('%Y%m%d')
     initialTileUrl = (request.build_absolute_uri
                       (reverse
                        ('xgds_plot_mapTileKml',
-                        args=(layerId, level, x, y))))
-    legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
-                                           % (MAP_DATA_PATH,
-                                              layerId))
-    return KmlUtil.wrapKmlDjango("""
-<Document>
-  <name>%(name)s</name>
+                        args=(layerId, dayCode, level, x, y))))
+
+    out.write("""
   <NetworkLink>
-    <name>Data</name>
+    <name>%(name)s</name>
     <visibility>0</visibility>
     <Link>
       <href>%(initialTileUrl)s</href>
     </Link>
   </NetworkLink>
+""" % dict(name=dateStr,
+           initialTileUrl=initialTileUrl))
+
+
+def writeMapKmlDataFolder(request, out, layerId, layerOpts):
+    out.write("""
+  <name>%(name)s</name>
+  <Folder>
+    <name>Data</name>
+    <open>1</open>
+""" % dict(name=layerOpts['valueName']))
+
+    queryClass = getClassByName(layerOpts['queryType'])
+    queryManager = queryClass(layerOpts)
+    dates = list(reversed(sorted(queryManager.getDatesWithData())))
+
+    nowTime = utcToTz(datetime.datetime.utcnow())
+    today = nowTime.date()
+
+    if len(dates) >= 4 and dates[0] == today:
+        # Put past days in a separate folder to avoid clutter. The user
+        # is most likely to be interested in today's data.
+        dates = [dates[0]] + ['pastDaysStart'] + dates[1:] + ['pastDaysEnd']
+
+    for day in dates:
+        if day == 'pastDaysStart':
+            out.write('<Folder><name>Past Days</name>\n')
+            continue
+        elif day == 'pastDaysEnd':
+            out.write('</Folder>\n')
+            continue
+
+        isToday = (day == today)
+        writeMapKmlForDay(request, out, layerId, layerOpts, day, isToday)
+
+    out.write("""
+  </Folder>
+""")
+
+
+def mapKml(request, layerId):
+    layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
+    legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
+                                           % (MAP_DATA_PATH,
+                                              layerId))
+
+    out = StringIO()
+    out.write("""<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"
+     xmlns:gx="http://www.google.com/kml/ext/2.2"
+     xmlns:kml="http://www.opengis.net/kml/2.2"
+     xmlns:atom="http://www.w3.org/2005/Atom">
+<Document>
+  <name>Tracks</name>
+  <open>1</open>
+""")
+
+    writeMapKmlDataFolder(request, out, layerId, layerOpts)
+
+    out.write("""
   <ScreenOverlay>
     <name>Legend</name>
     <visibility>0</visibility>
@@ -160,13 +234,16 @@ def mapKml(request, layerId):
       <href>%(legendUrl)s</href>
     </Icon>
   </ScreenOverlay>
+""" % dict(legendUrl=legendUrl))
+
+    out.write("""
 </Document>
-""" % dict(name=layerOpts['valueName'],
-           initialTileUrl=initialTileUrl,
-           legendUrl=legendUrl))
+</kml>
+""")
+    return HttpResponse(out.getvalue(), mimetype='application/vnd.google-earth.kml+xml')
 
 
-def mapTileKml(request, layerId, level, x, y):
+def mapTileKml(request, layerId, dayCode, level, x, y):
     level = int(level)
     x = int(x)
     y = int(y)
@@ -181,7 +258,7 @@ def mapTileKml(request, layerId, level, x, y):
             subUrl = (request.build_absolute_uri
                       (reverse
                        ('xgds_plot_mapTileKml',
-                        args=[layerId, subLevel, subX, subY])))
+                        args=[layerId, dayCode, subLevel, subX, subY])))
             linkList.append("""
 <NetworkLink>
   <Region>
@@ -205,9 +282,10 @@ def mapTileKml(request, layerId, level, x, y):
         netLinks = ''
 
     #tileUrl = request.build_absolute_uri(reverse('mapTileImage', args=[level, x, y]))
-    tileUrl = request.build_absolute_uri('%s/%s/%d/%d/%d.png'
+    tileUrl = request.build_absolute_uri('%s/%s/%s/%d/%d/%d.png'
                                          % (MAP_DATA_PATH,
                                             layerId,
+                                            dayCode,
                                             level, x, y))
     bounds = tile.getTileBounds(level, x, y)
     minZoom, maxZoom = settings.XGDS_PLOT_MAP_ZOOM_RANGE
@@ -253,7 +331,7 @@ def mapTileKml(request, layerId, level, x, y):
            maxLodPixels=maxLodPixels))
 
 
-def mapTileImage(request, level, x, y):
+def mapTileImage(request, dayCode, level, x, y):
     level = int(level)
     x = int(x)
     y = int(y)

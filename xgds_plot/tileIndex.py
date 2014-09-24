@@ -7,6 +7,8 @@
 import os
 from collections import deque
 import time
+import pytz
+import datetime
 
 from django import db
 import numpy
@@ -33,12 +35,17 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
 BATCH_READ_NUM_SAMPLES = 5000
 BATCH_SLEEP_NUM_SAMPLES = 100
 
+if settings.XGDS_PLOT_OPS_TIME_ZONE == 'auto':
+    OPS_TIME_ZONE = pytz.timezone(settings.TIME_ZONE)
+else:
+    OPS_TIME_ZONE = pytz.timezone(settings.XGDS_PLOT_OPS_TIME_ZONE)
+
 
 class TileIndex(object):
     @classmethod
     def getTileKey(cls, valueCode, tileTuple):
-        level, x, y = tileTuple
-        return '%s_%s_%s_%s' % (valueCode, level, x, y)
+        dayCode, level, x, y = tileTuple
+        return '%s_%s_%s_%s_%s' % (valueCode, dayCode, level, x, y)
 
     @classmethod
     def scaleAndClip(cls, M, crange):
@@ -165,14 +172,18 @@ class TileIndex(object):
                    % TimeUtil.posixToUtcDateTime(posixTimeMs / 1000.0))
             return
 
-        for tileParams in tile.getTilesOverlappingBounds((pos.longitude, pos.latitude,
+        timestampUtc = datetime.datetime.utcfromtimestamp(1e-3 * posixTimeMs)
+        timestampLocal = pytz.utc.localize(timestampUtc).astimezone(OPS_TIME_ZONE)
+        dayCode = timestampLocal.strftime('%Y%m%d')
+        for tileParams in tile.getTilesOverlappingBounds(dayCode,
+                                                         (pos.longitude, pos.latitude,
                                                           pos.longitude, pos.latitude)):
             val = self.valueManager.getValue(obj)
             self.addSample(tileParams, pos, val)
             self.parent.delayBox.addJob((self.valueCode, tileParams))
 
     def addSample(self, tileParams, pos, val):
-        level, _x, _y = tileParams
+        _dayCode, level, _x, _y = tileParams
         _x, _y, i, j = tile.getPixelOfLonLat(level, pos.longitude, pos.latitude)
         if not (0 <= i < N and 0 <= j < N):
             return
@@ -205,8 +216,8 @@ class TileIndex(object):
         tileData = self.parent.store[tileKey]
         im = self.getImage(tileData)
 
-        level, x, y = tileParams
-        outPath = '%s/%d/%d/%d.png' % (self.outputDir, level, x, y)
+        dayCode, level, x, y = tileParams
+        outPath = '%s/%s/%d/%d/%d.png' % (self.outputDir, dayCode, level, x, y)
         outDir = os.path.dirname(outPath)
         if not os.path.exists(outDir):
             os.makedirs(outDir)

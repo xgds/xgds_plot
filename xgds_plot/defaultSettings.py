@@ -48,6 +48,10 @@ XGDS_PLOT_MAP_PIXELS_PER_TILE = 256
 XGDS_PLOT_MAP_BBOX = [-155.470761, 19.756284,
                       -155.463084, 19.763668]
 
+# map layers broken up by day, split at midnight in the specified time zone.
+# if 'auto', use Django settings.TIME_ZONE.
+XGDS_PLOT_OPS_TIME_ZONE = 'UTC'
+
 # zoom in interval [MIN_ZOOM, MAX_ZOOM)
 XGDS_PLOT_MAP_ZOOM_RANGE = (14, 22)
 

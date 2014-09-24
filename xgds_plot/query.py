@@ -4,8 +4,12 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+from django.db import connection
+
 from geocamUtil.loader import getModelByName
 from geocamUtil import TimeUtil
+
+from xgds_plot import settings
 
 # pylint: disable=W0231
 
@@ -87,15 +91,25 @@ class Django(TimeSeriesQueryManager):
             filterKwargs.update(self.filterDict)
         return self.model.objects.filter(**filterKwargs).order_by(self.timestampField)
 
+    def getDatesWithData(self):
+        cursor = connection.cursor()
+        cursor.execute("SELECT DISTINCT DATE(CONVERT_TZ(%s, 'UTC', '%s')) FROM %s"
+                       % (self.timestampField,
+                          settings.XGDS_PLOT_OPS_TIME_ZONE,
+                          self.model._meta.db_table))
+        return [fields[0] for fields in cursor.fetchall()]
+
     def getTimestamp(self, obj):
         utcDt = getattr(obj, self.timestampField)
         posixTimeSecs = TimeUtil.utcDateTimeToPosix(utcDt)
         posixTimeMs = posixTimeSecs * 1000
         if self.timestampMicrosecondsField is not None:
             microseconds = getattr(obj, self.timestampMicrosecondsField)
+            assert microseconds <= 1e+6
             posixTimeMs += microseconds * 1e-3
         elif self.timestampNanosecondsField is not None:
             nanoseconds = getattr(obj, self.timestampNanosecondsField)
+            assert nanoseconds <= 1e+9
             posixTimeMs += nanoseconds * 1e-6
         return posixTimeMs
 
