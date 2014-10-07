@@ -6,6 +6,8 @@
 
 import re
 import datetime
+import collections
+import json
 
 from django.db import models
 
@@ -18,6 +20,16 @@ def intIfInt(val):
         return int(val)
     else:
         return val
+
+
+def recursiveUpdate(d, u):
+    if isinstance(u, collections.Mapping):
+        d = d.copy()
+        for k, v in u.iteritems():
+            d[k] = recursiveUpdate(d.get(k, {}), v)
+        return d
+    else:
+        return u
 
 
 class AbstractTimeSeries(models.Model):
@@ -82,18 +94,19 @@ class AbstractTimeSeries(models.Model):
 
     def fillValue(self, opts, fieldName, metaFieldName):
         value = getattr(self, fieldName, None)
-        if value is None:
-            return
-
         if callable(value):
             value = value()
+        if value in (None, ''):
+            return
+        # import sys; print >> sys.stderr, 'value:', value
+        # import sys; print >> sys.stderr, 'opts:', opts
 
         elts = [intIfInt(val) for val in metaFieldName.split('.')]
         pathToDict = elts[:-1]
         fieldInDict = elts[-1]
         currentDict = opts
         for elt in pathToDict:
-            import sys; print >> sys.stderr, currentDict
+            # import sys; print >> sys.stderr, currentDict
             currentDict = currentDict[elt]
 
         currentDict[fieldInDict] = value
@@ -109,7 +122,10 @@ class AbstractTimeSeries(models.Model):
 
     def getOptions(self):
         opts = self.getDefaultOptions()
-        opts.update(self.options)
+        # import sys; print >> sys.stderr, 'options:', self.options
+        # import sys; print >> sys.stderr, 'options2:', json.loads(self.options)
+        if self.options:
+            opts = recursiveUpdate(opts, json.loads(self.options))
         self.fillValues(opts)
         return opts
 
