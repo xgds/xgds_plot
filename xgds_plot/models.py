@@ -74,6 +74,7 @@ class AbstractTimeSeries(models.Model):
     def getDefaultOptions(cls):
         return {
             'type': 'TimeSeries',
+            'queryType': 'xgds_plot.query.Django',
             'valueType': 'xgds_plot.value.Scalar',
         }
 
