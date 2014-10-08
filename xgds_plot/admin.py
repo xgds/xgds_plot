@@ -7,11 +7,16 @@
 from django.contrib import admin
 
 from xgds_plot.models import TimeSeries
+from xgds_plot import forms as plotForms
 
 
 class TimeSeriesAdmin(admin.ModelAdmin):
+    form = plotForms.TimeSeriesFormWithVersionOption
+
     def save_model(self, request, obj, form, change):
-        obj.preSaveVersionIncrementIfNeeded()
+        if obj.pk is not None and form.cleaned_data['saveAsNewVersion']:
+            obj.pk = None
+            obj.version += 1
         obj.save()
 
 

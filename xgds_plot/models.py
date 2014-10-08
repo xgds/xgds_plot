@@ -37,10 +37,14 @@ class AbstractTimeSeries(models.Model):
     version = models.PositiveIntegerField(default=1, editable=False,
                                           help_text='Explicit version control. When you edit and save a time series in the admin interface, instead of updating the database record, it will create a new database record with an incremented version number, and initially inactive.')
 
-    active = models.BooleanField(default=True, help_text='If true, index this time series, making it potentially available for strip charts and maps')
+    active = models.BooleanField(default=True,
+                                 help_text='If true, index this time series, making it potentially available for strip charts and maps'
+                                 )
 
     startTime = models.DateTimeField(default=datetime.datetime.utcnow, null=True, blank=True, help_text='Only index values after the given UTC time (speeds up processing)')
-    endTime = models.DateTimeField(null=True, blank=True, help_text='Only index values before the given UTC time (speeds up processing)')
+    endTime = models.DateTimeField(null=True, blank=True,
+                                   editable=False,  # don't anticipate using this. here if we really need it.
+                                   help_text='Only index values before the given UTC time (speeds up processing)')
 
     stripChartMin = models.FloatField(null=True, blank=True,
                                       help_text='Minimum value on y axis of strip chart')

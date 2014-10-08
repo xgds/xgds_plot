@@ -56,6 +56,24 @@ def capitalizeFirstLetter(s):
     return s[:1].capitalize() + s[1:]
 
 
+def getMin(a, b):
+    if a is None:
+        return b
+    elif b is None:
+        return a
+    else:
+        return min(a, b)
+
+
+def getMax(a, b):
+    if a is None:
+        return b
+    elif b is None:
+        return a
+    else:
+        return max(a, b)
+
+
 class Django(TimeSeriesQueryManager):
     """
     A TimeSeriesQueryManager implementation that retrieves data from a
@@ -70,6 +88,8 @@ class Django(TimeSeriesQueryManager):
         self.timestampField = meta['queryTimestampField']
         self.timestampMicrosecondsField = meta.get('queryTimestampMicrosecondsField', None)
         self.timestampNanosecondsField = meta.get('queryTimestampNanosecondsField', None)
+        self.startTime = meta.get('startTime', None)
+        self.endTime = meta.get('endTime', None)
 
         self.filterDict = dict(meta.get('queryFilter', []))
         self.queryTopic = meta['queryModel']
@@ -82,6 +102,9 @@ class Django(TimeSeriesQueryManager):
         return capitalizeFirstLetter(self.model._meta.get_field(valueField).verbose_name)
 
     def getData(self, minTime=None, maxTime=None):
+        minTime = getMax(self.startTime, minTime)
+        maxTime = getMin(self.endTime, maxTime)
+
         filterKwargs = {}
         if minTime is not None:
             filterKwargs[self.timestampField + '__gt'] = posixTimeMsToUtcDateTime(minTime)
@@ -97,7 +120,12 @@ class Django(TimeSeriesQueryManager):
                        % (self.timestampField,
                           settings.XGDS_PLOT_OPS_TIME_ZONE,
                           self.model._meta.db_table))
-        return [fields[0] for fields in cursor.fetchall()]
+        dates = [fields[0] for fields in cursor.fetchall()]
+        if self.startTime:
+            dates = [day for day in dates if day > startTime]
+        if self.endTime:
+            dates = [day for day in dates if day <= endTime]
+        return dates
 
     def getTimestamp(self, obj):
         utcDt = getattr(obj, self.timestampField)
