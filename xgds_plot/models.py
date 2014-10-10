@@ -11,6 +11,8 @@ import json
 
 from django.db import models
 
+from geocamUtil.TimeUtil import utcDateTimeToPosix
+
 
 def intIfInt(val):
     """
@@ -87,13 +89,23 @@ class AbstractTimeSeries(models.Model):
             'valueType': 'xgds_plot.value.Scalar',
         }
 
+    def getStartTimePosixMs(self):
+        if self.startTime is None:
+            return None
+        return utcDateTimeToPosix(self.startTime) * 1000
+
+    def getEndTimePosixMs(self):
+        if self.endTime is None:
+            return None
+        return utcDateTimeToPosix(self.endTime) * 1000
+
     @classmethod
     def getValueFields(cls):
         return (
             ('getValueName', 'valueName'),
             ('getValueCode', 'valueCode'),
-            ('startTime', 'startTime'),
-            ('endTime', 'endTime'),
+            ('getStartTimePosixMs', 'startTime'),
+            ('getEndTimePosixMs', 'endTime'),
             ('stripChartMin', 'plotOpts.yaxis.min'),
             ('stripChartMax', 'plotOpts.yaxis.max'),
             ('stripChartSmoothingSigmaSeconds', 'smoothing.sigmaSeconds'),

@@ -89,11 +89,7 @@ class Django(TimeSeriesQueryManager):
         self.timestampMicrosecondsField = meta.get('queryTimestampMicrosecondsField', None)
         self.timestampNanosecondsField = meta.get('queryTimestampNanosecondsField', None)
         self.startTime = meta.get('startTime', None)
-        if self.startTime:
-            self.startTime = TimeUtil.utcDateTimeToPosix(self.startTime) * 1000
         self.endTime = meta.get('endTime', None)
-        if self.endTime:
-            self.endTime = TimeUtil.utcDateTimeToPosix(self.endTime) * 1000
 
         self.filterDict = dict(meta.get('queryFilter', []))
         self.queryTopic = meta['queryModel']
