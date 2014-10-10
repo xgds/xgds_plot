@@ -121,10 +121,10 @@ class Django(TimeSeriesQueryManager):
                           settings.XGDS_PLOT_OPS_TIME_ZONE,
                           self.model._meta.db_table))
         dates = [fields[0] for fields in cursor.fetchall()]
-        if self.startTime:
-            dates = [day for day in dates if day > startTime]
-        if self.endTime:
-            dates = [day for day in dates if day <= endTime]
+        #if self.startTime:
+        #    dates = [day for day in dates if day > posixTimeMsToUtcDateTime(self.startTime)]
+        #if self.endTime:
+        #    dates = [day for day in dates if day <= posixTimeMsToUtcDateTime(self.endTime)]
         return dates
 
     def getTimestamp(self, obj):
