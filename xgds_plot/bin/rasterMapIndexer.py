@@ -6,8 +6,11 @@
 # __END_LICENSE__
 
 import os
+import sys
 import logging
 import atexit
+import logging
+import signal
 
 from zmq.eventloop import ioloop
 ioloop.install()
@@ -71,10 +74,12 @@ class RasterMapIndexer(object):
             index.start()
 
     def stop(self):
+        logging.info('cleaning up indexer...')
         self.store.sync()
         self.delayBox.stop()
         for index in self.indexes.itervalues():
             index.stop()
+        logging.info('  ... done')
 
     def clean(self):
         plotUtil.rmIfPossible(self.cacheDir)
@@ -99,14 +104,19 @@ def main():
         parser.error('expected no args')
     logging.basicConfig(level=logging.INFO)
 
+    # insure atexit handlers are called on receiving SIGINT or SIGTERM
+    def sigHandler(signo, frame):
+        logging.warn('caught signal %s, exiting', signo)
+        sys.exit(0)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, sigHandler)
+
     rmi = RasterMapIndexer(opts)
     if opts.clean:
         rmi.clean()
     rmi.start()
-    if opts.quit:
-        rmi.stop()
-    else:
-        atexit.register(rmi.stop)
+    atexit.register(rmi.stop)
+    if not opts.quit:
         zmqLoop()
 
 if __name__ == '__main__':

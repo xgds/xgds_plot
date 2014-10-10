@@ -2,6 +2,8 @@
 
 import sys
 import atexit
+import logging
+import signal
 
 from zmq.eventloop import ioloop
 ioloop.install()
@@ -43,8 +45,10 @@ class XgdsPlotIndexer(object):
             index.start()
 
     def stop(self):
+        logging.info('cleaning up indexer...')
         for index in self.indexes.itervalues():
             index.stop()
+        logging.info('  ... done')
 
     def clean(self):
         for index in self.indexes.itervalues():
@@ -66,15 +70,21 @@ def main():
     opts, args = parser.parse_args()
     if args:
         parser.error('expected no arguments')
+    logging.basicConfig(level=logging.INFO)
+
+    # insure atexit handlers are called on receiving SIGINT or SIGTERM
+    def sigHandler(signo, frame):
+        logging.warn('caught signal %s, exiting', signo)
+        sys.exit(0)
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        signal.signal(sig, sigHandler)
 
     x = XgdsPlotIndexer(opts)
     if opts.clean:
         x.clean()
     x.start()
-    if opts.quit:
-        x.stop()
-    else:
-        atexit.register(x.stop)
+    atexit.register(x.stop)
+    if not opts.quit:
         zmqLoop()
 
 if __name__ == '__main__':
