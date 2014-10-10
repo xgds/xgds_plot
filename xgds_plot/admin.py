@@ -4,6 +4,8 @@
 # All Rights Reserved.
 # __END_LICENSE__
 
+import datetime
+
 from django.contrib import admin
 
 from xgds_plot.models import TimeSeries
@@ -17,6 +19,8 @@ class TimeSeriesAdmin(admin.ModelAdmin):
         if obj.pk is not None and form.cleaned_data['saveAsNewVersion']:
             obj.pk = None
             obj.version += 1
+        if form.cleaned_data['startIndexingAtCurrentTime']:
+            obj.startTime = datetime.datetime.utcnow()
         obj.save()
 
 

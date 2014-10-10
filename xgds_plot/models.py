@@ -41,22 +41,27 @@ class AbstractTimeSeries(models.Model):
                                  help_text='If true, index this time series, making it potentially available for strip charts and maps'
                                  )
 
-    startTime = models.DateTimeField(default=datetime.datetime.utcnow, null=True, blank=True, help_text='Only index values after the given UTC time (speeds up processing)')
-    endTime = models.DateTimeField(null=True, blank=True,
+    startTime = models.DateTimeField(null=True, blank=True, verbose_name='Start time',
+                                     help_text='If specified, only index values after the given UTC time. You may prefer to use the "Start indexing at current time field" at the bottom instead.')
+    endTime = models.DateTimeField(null=True, blank=True, verbose_name='End time',
                                    editable=False,  # don't anticipate using this. here if we really need it.
                                    help_text='Only index values before the given UTC time (speeds up processing)')
 
-    stripChartMin = models.FloatField(null=True, blank=True,
+    stripChartMin = models.FloatField(null=True, blank=True, verbose_name='Strip chart min',
                                       help_text='Minimum value on y axis of strip chart')
-    stripChartMax = models.FloatField(null=True, blank=True,
+    stripChartMax = models.FloatField(null=True, blank=True, verbose_name='Strip chart max',
                                       help_text='Maximum value on y axis of strip chart')
     stripChartSmoothingSigmaSeconds = models.FloatField(null=True, blank=True,
+                                                        verbose_name='Strip chart smoothing (seconds)',
                                                         help_text='Sigma value for Gaussian smoothing of strip chart time series (measured in seconds)')
     heatMapMin = models.FloatField(null=True, blank=True,
+                                   verbose_name='Heat map min',
                                    help_text='Minimum value in heat map color range (values at this level or below will be colored blue with default colormap).')
     heatMapMax = models.FloatField(null=True, blank=True,
+                                   verbose_name='Heat map max',
                                    help_text='Maximum value in heat map color range (values at this level or above will be colored red with default colormap)')
     heatMapSmoothingMeters = models.FloatField(null=True, blank=True,
+                                               verbose_name='Heat map smoothing (meters)',
                                                help_text='Sigma value for Gaussian smoothing of heat map (measured in meters)')
 
     options = models.TextField(blank=True, help_text='Options for plot are built up in following order: (1) getDefaultOptions() from the Django model, (2) overwrite with any values from this options field, (3) overwrite with any values specified above (such as "stripChartMin").')
