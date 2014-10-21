@@ -55,11 +55,24 @@ class JsonStore(object):
         pathDir = os.path.dirname(self.path)
         if not os.path.exists(pathDir):
             os.makedirs(pathDir)
-        json.dump(obj, open(self.path, 'wb'), indent=4, sort_keys=True)
+        text = json.dumps(obj, indent=4, sort_keys=True)
+
+        tmpPath = self.path + '.tmp'
+        out = open(tmpPath, 'wb')
+        out.write(text)
+        out.close()
+
+        # atomic overwrite to avoid any chance of corrupted file
+        os.rename(tmpPath, self.path)
 
     def read(self, dflt=None):
         if os.path.exists(self.path):
-            return json.load(open(self.path, 'rb'))
+            text = open(self.path, 'rb').read()
+            try:
+                return json.loads(text)
+            except:
+                print >> sys.stderr, 'ERROR: JSON file %s, with size %s, appears to be corrupted, will ignore and overwrite' % (self.path, len(text))
+                return dflt
         else:
             return dflt
 
