@@ -27,7 +27,7 @@ DATA_PATH = os.path.join(settings.DATA_DIR,
                          settings.XGDS_PLOT_DATA_SUBDIR,
                          'map')
 
-MAX_TILES_IN_MEMORY = 100
+MAX_TILES_IN_MEMORY = 200
 
 
 class RasterMapIndexer(object):
