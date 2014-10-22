@@ -122,6 +122,40 @@ def mapIndexKml(request):
     return KmlUtil.wrapKmlDjango(out.getvalue())
 
 
+def writeMapIndexKml(request, out):
+    out.write("""
+  <Document>
+    <name>Raster Maps</name>
+    <open>1</open>
+""")
+
+    getDatesFn = getClassByName(settings.XGDS_PLOT_GET_DATES_FUNCTION)
+    dates = list(reversed(sorted(getDatesFn())))
+
+    nowTime = utcToTz(datetime.datetime.utcnow())
+    today = nowTime.date()
+
+    if len(dates) >= 4 and dates[0] == today:
+        # Put past days in a separate folder to avoid clutter. The user
+        # is most likely to be interested in today's data.
+        dates = [dates[0]] + ['pastDaysStart'] + dates[1:] + ['pastDaysEnd']
+
+    for day in dates:
+        if day == 'pastDaysStart':
+            out.write('<Folder><name>Past Days</name>\n')
+            continue
+        elif day == 'pastDaysEnd':
+            out.write('</Folder>\n')
+            continue
+
+        isToday = (day == today)
+        writeMapIndexKmlForDay(request, out, day, isToday)
+
+    out.write("""
+  </Document>
+""")
+
+
 def writeMapIndexKmlForDay(request, out, day, isToday):
     if isToday:
         dateStr = 'Today'
@@ -164,143 +198,109 @@ def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
            initialTileUrl=initialTileUrl))
 
 
-def writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday):
-    if isToday:
-        dateStr = 'Today'
-    else:
-        dateStr = day.strftime('%Y-%m-%d')
+# def writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday):
+#     if isToday:
+#         dateStr = 'Today'
+#     else:
+#         dateStr = day.strftime('%Y-%m-%d')
 
-    initialTile = tile.getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
-    level, x, y = initialTile
-    dayCode = day.strftime('%Y%m%d')
-    initialTileUrl = (request.build_absolute_uri
-                      (reverse
-                       ('xgds_plot_mapTileKml',
-                        args=(layerId, dayCode, level, x, y))))
+#     initialTile = tile.getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
+#     level, x, y = initialTile
+#     dayCode = day.strftime('%Y%m%d')
+#     initialTileUrl = (request.build_absolute_uri
+#                       (reverse
+#                        ('xgds_plot_mapTileKml',
+#                         args=(layerId, dayCode, level, x, y))))
 
-    out.write("""
-  <NetworkLink>
-    <name>%(name)s</name>
-    <visibility>0</visibility>
-    <Style>
-      <ListStyle>
-        <listItemType>checkHideChildren</listItemType>
-      </ListStyle>
-    </Style>
-    <Link>
-      <href>%(initialTileUrl)s</href>
-    </Link>
-  </NetworkLink>
-""" % dict(name=dateStr,
-           initialTileUrl=initialTileUrl))
-
-
-def writeMapKmlDataFolder(request, out, layerId, layerOpts):
-    out.write("""
-  <name>%(name)s</name>
-  <Folder>
-    <name>Data</name>
-    <open>1</open>
-""" % dict(name=layerOpts['valueName']))
-
-    queryClass = getClassByName(layerOpts['queryType'])
-    queryManager = queryClass(layerOpts)
-    dates = list(reversed(sorted(queryManager.getDatesWithData())))
-
-    nowTime = utcToTz(datetime.datetime.utcnow())
-    today = nowTime.date()
-
-    if len(dates) >= 4 and dates[0] == today:
-        # Put past days in a separate folder to avoid clutter. The user
-        # is most likely to be interested in today's data.
-        dates = [dates[0]] + ['pastDaysStart'] + dates[1:] + ['pastDaysEnd']
-
-    for day in dates:
-        if day == 'pastDaysStart':
-            out.write('<Folder><name>Past Days</name>\n')
-            continue
-        elif day == 'pastDaysEnd':
-            out.write('</Folder>\n')
-            continue
-
-        isToday = (day == today)
-        writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday)
-
-    out.write("""
-  </Folder>
-""")
+#     out.write("""
+#   <NetworkLink>
+#     <name>%(name)s</name>
+#     <visibility>0</visibility>
+#     <Style>
+#       <ListStyle>
+#         <listItemType>checkHideChildren</listItemType>
+#       </ListStyle>
+#     </Style>
+#     <Link>
+#       <href>%(initialTileUrl)s</href>
+#     </Link>
+#   </NetworkLink>
+# """ % dict(name=dateStr,
+#            initialTileUrl=initialTileUrl))
 
 
-def writeMapIndexKml(request, out):
-    out.write("""
-  <Document>
-    <name>Raster Maps</name>
-    <open>1</open>
-""")
+# def writeMapKmlDataFolder(request, out, layerId, layerOpts):
+#     out.write("""
+#   <name>%(name)s</name>
+#   <Folder>
+#     <name>Data</name>
+#     <open>1</open>
+# """ % dict(name=layerOpts['valueName']))
 
-    getDatesFn = getClassByName(settings.XGDS_PLOT_GET_DATES_FUNCTION)
-    dates = list(reversed(sorted(getDatesFn())))
+#     queryClass = getClassByName(layerOpts['queryType'])
+#     queryManager = queryClass(layerOpts)
+#     dates = list(reversed(sorted(queryManager.getDatesWithData())))
 
-    nowTime = utcToTz(datetime.datetime.utcnow())
-    today = nowTime.date()
+#     nowTime = utcToTz(datetime.datetime.utcnow())
+#     today = nowTime.date()
 
-    if len(dates) >= 4 and dates[0] == today:
-        # Put past days in a separate folder to avoid clutter. The user
-        # is most likely to be interested in today's data.
-        dates = [dates[0]] + ['pastDaysStart'] + dates[1:] + ['pastDaysEnd']
+#     if len(dates) >= 4 and dates[0] == today:
+#         # Put past days in a separate folder to avoid clutter. The user
+#         # is most likely to be interested in today's data.
+#         dates = [dates[0]] + ['pastDaysStart'] + dates[1:] + ['pastDaysEnd']
 
-    for day in dates:
-        if day == 'pastDaysStart':
-            out.write('<Folder><name>Past Days</name>\n')
-            continue
-        elif day == 'pastDaysEnd':
-            out.write('</Folder>\n')
-            continue
+#     for day in dates:
+#         if day == 'pastDaysStart':
+#             out.write('<Folder><name>Past Days</name>\n')
+#             continue
+#         elif day == 'pastDaysEnd':
+#             out.write('</Folder>\n')
+#             continue
 
-        isToday = (day == today)
-        writeMapIndexKmlForDay(request, out, day, isToday)
+#         isToday = (day == today)
+#         writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday)
 
-    out.write("""
-  </Document>
-""")
+#     out.write("""
+#   </Folder>
+# """)
 
 
-def mapKml(request, layerId):
-    layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
-    legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
-                                           % (MAP_DATA_PATH,
-                                              layerId))
+# def mapKml(request, layerId):
+#     layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
+#     legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
+#                                            % (MAP_DATA_PATH,
+#                                               layerId))
 
-    out = StringIO()
-    out.write("""<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2"
-     xmlns:gx="http://www.google.com/kml/ext/2.2"
-     xmlns:kml="http://www.opengis.net/kml/2.2"
-     xmlns:atom="http://www.w3.org/2005/Atom">
-<Document>
-  <name>Tracks</name>
-  <open>1</open>
-""")
+#     out = StringIO()
+#     out.write("""<?xml version="1.0" encoding="UTF-8"?>
+# <kml xmlns="http://www.opengis.net/kml/2.2"
+#      xmlns:gx="http://www.google.com/kml/ext/2.2"
+#      xmlns:kml="http://www.opengis.net/kml/2.2"
+#      xmlns:atom="http://www.w3.org/2005/Atom">
+# <Document>
+#   <name>Tracks</name>
+#   <open>1</open>
+# """)
 
-    writeMapKmlDataFolder(request, out, layerId, layerOpts)
+#     writeMapKmlDataFolder(request, out, layerId, layerOpts)
 
-    out.write("""
-  <ScreenOverlay>
-    <name>Legend</name>
-    <visibility>0</visibility>
-    <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
-    <screenXY x="0" y="0.25" xunits="fraction" yunits="fraction"/>
-    <Icon>
-      <href>%(legendUrl)s</href>
-    </Icon>
-  </ScreenOverlay>
-""" % dict(legendUrl=legendUrl))
+#     out.write("""
+#   <ScreenOverlay>
+#     <name>Legend</name>
+#     <visibility>0</visibility>
+#     <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+#     <screenXY x="0" y="0.25" xunits="fraction" yunits="fraction"/>
+#     <Icon>
+#       <href>%(legendUrl)s</href>
+#     </Icon>
+#   </ScreenOverlay>
+# """ % dict(legendUrl=legendUrl))
 
-    out.write("""
-</Document>
-</kml>
-""")
-    return HttpResponse(out.getvalue(), mimetype='application/vnd.google-earth.kml+xml')
+#     out.write("""
+# </Document>
+# </kml>
+# """)
+#     return HttpResponse(out.getvalue(), mimetype='application/vnd.google-earth.kml+xml')
 
 
 def mapTileKml(request, layerId, dayCode, level, x, y):

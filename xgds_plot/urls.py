@@ -34,9 +34,9 @@ urlpatterns = patterns(
         'mapIndexKml', {'loginRequired': False},
         'xgds_plot_mapIndexKml'),
 
-    url(r'^mapLayer_(?P<layerId>[^\.]+)\.kml$',
-        'mapKml', {'loginRequired': False},
-        'xgds_plot_mapKml'),
+    #url(r'^mapLayer_(?P<layerId>[^\.]+)\.kml$',
+    #    'mapKml', {'loginRequired': False},
+    #    'xgds_plot_mapKml'),
 
     url(r'^mapTile/(?P<layerId>[^/]+)/(?P<dayCode>\d+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
         'mapTileKml', {'loginRequired': False},
