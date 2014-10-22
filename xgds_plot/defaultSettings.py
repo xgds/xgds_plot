@@ -138,3 +138,5 @@ XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION = 200
 # list any extra ipython notebook startup files here. they will be installed in
 # <site>/var/notebook/profile_default/startup
 XGDS_PLOT_NOTEBOOK_STARTUP_FILES = []
+
+XGDS_PLOT_GET_DATES_FUNCTION = 'geocamTrack.trackUtil.getDatesWithPositionData'

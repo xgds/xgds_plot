@@ -118,32 +118,53 @@ def plots(request):
 
 def mapIndexKml(request):
     out = StringIO()
-    out.write("""
-<Document>
-  <name>Raster Maps</name>
-""")
-    for layerOpts in meta.TIME_SERIES:
-        if 'map' in layerOpts:
-            layerUrl = (request.build_absolute_uri
-                        (reverse
-                         ('xgds_plot_mapKml',
-                          args=[layerOpts['valueCode']])))
-            out.write("""
-<NetworkLink>
-  <name>%(name)s</name>
-  <visibility>0</visibility>
-  <Link>
-    <href>%(layerUrl)s</href>
-  </Link>
-</NetworkLink>
-"""
-                      % dict(name=layerOpts['valueName'],
-                             layerUrl=layerUrl))
-    out.write("</Document>")
+    writeMapIndexKml(request, out)
     return KmlUtil.wrapKmlDjango(out.getvalue())
 
 
-def writeMapKmlForDay(request, out, layerId, layerOpts, day, isToday):
+def writeMapIndexKmlForDay(request, out, day, isToday):
+    if isToday:
+        dateStr = 'Today'
+    else:
+        dateStr = day.strftime('%Y-%m-%d')
+
+    out.write("""
+<Folder>
+  <name>%(dateStr)s</name>
+""" % dict(dateStr=dateStr))
+    for layerOpts in meta.TIME_SERIES:
+        if 'map' in layerOpts:
+            writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts)
+    out.write("</Folder>")
+
+
+def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
+    initialTile = tile.getTileContainingBounds(settings.XGDS_PLOT_MAP_BBOX)
+    level, x, y = initialTile
+    dayCode = day.strftime('%Y%m%d')
+    initialTileUrl = (request.build_absolute_uri
+                      (reverse
+                       ('xgds_plot_mapTileKml',
+                        args=(layerOpts['valueCode'], dayCode, level, x, y))))
+
+    out.write("""
+  <NetworkLink>
+    <name>%(name)s</name>
+    <visibility>0</visibility>
+    <Style>
+      <ListStyle>
+        <listItemType>checkHideChildren</listItemType>
+      </ListStyle>
+    </Style>
+    <Link>
+      <href>%(initialTileUrl)s</href>
+    </Link>
+  </NetworkLink>
+""" % dict(name=layerOpts['valueName'],
+           initialTileUrl=initialTileUrl))
+
+
+def writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday):
     if isToday:
         dateStr = 'Today'
     else:
@@ -203,10 +224,44 @@ def writeMapKmlDataFolder(request, out, layerId, layerOpts):
             continue
 
         isToday = (day == today)
-        writeMapKmlForDay(request, out, layerId, layerOpts, day, isToday)
+        writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday)
 
     out.write("""
   </Folder>
+""")
+
+
+def writeMapIndexKml(request, out):
+    out.write("""
+  <Document>
+    <name>Raster Maps</name>
+    <open>1</open>
+""")
+
+    getDatesFn = getClassByName(settings.XGDS_PLOT_GET_DATES_FUNCTION)
+    dates = list(reversed(sorted(getDatesFn())))
+
+    nowTime = utcToTz(datetime.datetime.utcnow())
+    today = nowTime.date()
+
+    if len(dates) >= 4 and dates[0] == today:
+        # Put past days in a separate folder to avoid clutter. The user
+        # is most likely to be interested in today's data.
+        dates = [dates[0]] + ['pastDaysStart'] + dates[1:] + ['pastDaysEnd']
+
+    for day in dates:
+        if day == 'pastDaysStart':
+            out.write('<Folder><name>Past Days</name>\n')
+            continue
+        elif day == 'pastDaysEnd':
+            out.write('</Folder>\n')
+            continue
+
+        isToday = (day == today)
+        writeMapIndexKmlForDay(request, out, day, isToday)
+
+    out.write("""
+  </Document>
 """)
 
 
