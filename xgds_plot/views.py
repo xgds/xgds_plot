@@ -180,10 +180,14 @@ def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
                       (reverse
                        ('xgds_plot_mapTileKml',
                         args=(layerOpts['valueCode'], dayCode, level, x, y))))
+    legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
+                                           % (MAP_DATA_PATH,
+                                              layerOpts['valueCode']))
 
     out.write("""
+  <Folder><name>%(name)s</name>\n
   <NetworkLink>
-    <name>%(name)s</name>
+    <name>Data</name>
     <visibility>0</visibility>
     <Style>
       <ListStyle>
@@ -196,6 +200,20 @@ def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
   </NetworkLink>
 """ % dict(name=layerOpts['valueName'],
            initialTileUrl=initialTileUrl))
+
+    out.write("""
+   <ScreenOverlay>
+     <name>Legend</name>
+     <visibility>0</visibility>
+     <overlayXY x="0" y="1" xunits="fraction" yunits="fraction"/>
+     <screenXY x="0" y="0.25" xunits="fraction" yunits="fraction"/>
+     <Icon>
+       <href>%(legendUrl)s</href>
+     </Icon>
+   </ScreenOverlay>
+   </Folder>
+ """ % dict(legendUrl=legendUrl))
+
 
 
 # def writeMapKmlForLayerDay(request, out, layerId, layerOpts, day, isToday):
