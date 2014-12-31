@@ -63,12 +63,12 @@ def dumps(obj):
 
 def getMeta(request):
     return HttpResponse(dumps(meta.TIME_SERIES),
-                        mimetype='application/json')
+                        content_type='application/json')
 
 
 def now(request):
     return HttpResponse(unicode(int(time.time() * 1000)).encode('utf-8'),
-                        mimetype='text/plain; charset="utf-8"')
+                        content_type='text/plain; charset="utf-8"')
 
 
 def plots(request):
@@ -318,7 +318,7 @@ def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
 # </Document>
 # </kml>
 # """)
-#     return HttpResponse(out.getvalue(), mimetype='application/vnd.google-earth.kml+xml')
+#     return HttpResponse(out.getvalue(), content_type='application/vnd.google-earth.kml+xml')
 
 
 def mapTileKml(request, layerId, dayCode, level, x, y):
@@ -434,7 +434,7 @@ def mapTileImage(request, dayCode, level, x, y):
     except OSError:
         pass
     return HttpResponse(file(img, 'r').read(),
-                        mimetype=mimetype)
+                        content_type=mimetype)
 
 
 def javaStyle(dt):
@@ -464,7 +464,7 @@ def profileRender(request, layerId):
                   showSamplePoints=showSamplePoints))
     django.db.reset_queries()  # clear query log to reduce memory usage
     return HttpResponse(imageData,
-                        mimetype='image/png')
+                        content_type='image/png')
 
 
 def profileCsv(request, layerId):
@@ -480,7 +480,7 @@ def profileCsv(request, layerId):
                                          fill=fill)
     django.db.reset_queries()  # clear query log to reduce memory usage
     return HttpResponse(csvData,
-                        mimetype='text/csv')
+                        content_type='text/csv')
 
 
 def profilesPage(request):
@@ -521,4 +521,4 @@ def getStaticPlot(request, seriesId):
                 javaStyle(maxTime)))
     django.db.reset_queries()  # clear query log to reduce memory usage
     return HttpResponse(imgData,
-                        mimetype='image/png')
+                        content_type='image/png')
