@@ -140,3 +140,7 @@ XGDS_PLOT_PROFILE_Z_PIX_RESOLUTION = 200
 XGDS_PLOT_NOTEBOOK_STARTUP_FILES = []
 
 XGDS_PLOT_GET_DATES_FUNCTION = 'geocamTrack.trackUtil.getDatesWithPositionData'
+
+# include this in your siteSettings.py BOWER_INSTALLED_APPS
+XGDS_PLOT_BOWER_INSTALLED_APPS = ('flot',
+                                  )
