@@ -30,3 +30,4 @@ class TimeSeriesFormWithVersionOption(forms.ModelForm):
 
     class Meta:
         model = plotModels.TimeSeries
+        fields = '__all__'  # TODO not sure if we want to include all fields
