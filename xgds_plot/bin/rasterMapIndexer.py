@@ -31,7 +31,7 @@ from geocamUtil.store import FileStore, LruCacheStore
 from geocamUtil.zmqUtil.delayBox import DelayBox
 
 from xgds_plot.tileIndex import TileIndex
-from xgds_plot import settings, meta, plotUtil
+from django.conf import settings, meta, plotUtil
 
 DATA_PATH = os.path.join(settings.DATA_DIR,
                          settings.XGDS_PLOT_DATA_SUBDIR,

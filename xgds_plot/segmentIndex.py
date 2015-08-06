@@ -26,7 +26,7 @@ from geocamUtil.loader import getClassByName
 from geocamUtil.store import FileStore, LruCacheStore
 from geocamUtil.zmqUtil.delayBox import DelayBox
 
-from xgds_plot import settings
+from django.conf import settings
 from xgds_plot import plotUtil
 
 MIN_SEGMENT_LENGTH_MS = (settings.XGDS_PLOT_MIN_DATA_INTERVAL_MS

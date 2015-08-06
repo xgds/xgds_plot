@@ -19,7 +19,7 @@ import numpy
 import sys
 import time
 
-from xgds_plot import settings
+from django.conf import settings
 
 # pylint: disable=E1101
 

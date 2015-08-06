@@ -42,7 +42,8 @@ import matplotlib.dates
 
 from geocamUtil.loader import getModelByName
 
-from xgds_plot import settings, pylabUtil
+from django.conf import settings
+from xgds_plot import pylabUtil
 from xgds_plot import csvutil
 from xgds_plot.csvutil import q
 

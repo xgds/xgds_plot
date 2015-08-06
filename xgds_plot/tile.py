@@ -21,7 +21,7 @@ import sys
 import numpy
 from scipy.ndimage import filters
 
-from xgds_plot import settings
+from django.conf import settings
 
 # pylint: disable=E1101
 

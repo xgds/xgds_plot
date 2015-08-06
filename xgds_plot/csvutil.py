@@ -17,7 +17,7 @@
 import datetime
 import calendar
 
-from xgds_plot import settings
+from django.conf import settings
 
 try:
     def total_seconds(delta):

@@ -35,9 +35,8 @@ from django.core.management.base import NoArgsCommand
 
 from geocamUtil.Builder import Builder
 from geocamUtil.Installer import Installer
-from geocamUtil import settings as geocamUtilSettings
 
-from xgds_plot import settings
+from django.conf import settings
 
 
 class Command(NoArgsCommand):
@@ -52,7 +51,7 @@ class Command(NoArgsCommand):
         b.finish()
 
     def generateNotebookDir(self, builder, appDir):
-        assert geocamUtilSettings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
+        assert settings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
             'generateNotebookDir: very error-prone if not using symlinks'
         profileDir = os.path.join(appDir, 'notebook', 'profile_default')
         siteConfig = os.path.join(profileDir, 'ipython_notebook_config.py')

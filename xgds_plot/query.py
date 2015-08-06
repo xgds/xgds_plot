@@ -19,7 +19,7 @@ from django.db import connection
 from geocamUtil.loader import getModelByName
 from geocamUtil import TimeUtil
 
-from xgds_plot import settings
+from django.conf import settings
 
 # pylint: disable=W0231
 

@@ -33,7 +33,8 @@ from matplotlib import pyplot as plt
 
 from geocamUtil.loader import getClassByName
 
-from xgds_plot import settings, pylabUtil
+from django.conf import settings
+from xgds_plot import pylabUtil
 from xgds_plot.meta import TIME_SERIES_LOOKUP
 
 

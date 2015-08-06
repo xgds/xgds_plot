@@ -23,7 +23,7 @@ import logging
 
 from django.core.management.base import NoArgsCommand
 
-from xgds_plot import settings
+from django.conf import settings
 
 
 def dosys(cmd):

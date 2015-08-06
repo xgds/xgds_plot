@@ -32,7 +32,8 @@ from PIL import Image
 from geocamUtil.loader import getClassByName
 from geocamUtil import TimeUtil
 
-from xgds_plot import settings, tile, plotUtil
+from django.conf import settings
+from xgds_plot import tile, plotUtil
 
 # pylint: disable=E1101
 

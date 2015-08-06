@@ -23,7 +23,7 @@ import django.db.models
 from matplotlib import pyplot as plt
 
 from xgds_plot.plotUtil import *  # pylint: disable=W0401
-from xgds_plot import settings
+from django.conf import settings
 
 # pylint: disable=E1101,W0201,R0924,W0108
 

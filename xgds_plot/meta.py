@@ -18,7 +18,7 @@ import operator
 
 from geocamUtil.loader import getClassByName
 
-from xgds_plot import settings
+from django.conf import settings
 
 
 def expandTimeSeriesMeta(meta):

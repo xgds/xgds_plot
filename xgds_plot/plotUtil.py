@@ -22,7 +22,7 @@ import re
 
 from geocamUtil import anyjson as json
 
-from xgds_plot import settings
+from django.conf import settings
 
 FLOAT_REGEX = re.compile(r'^-?\d+(\.\d*)?$')
 

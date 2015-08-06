@@ -36,7 +36,7 @@ from geocamUtil import anyjson as json
 from geocamUtil import KmlUtil
 from geocamUtil.loader import getClassByName
 
-from xgds_plot import settings
+from django.conf import settings
 from xgds_plot.plotUtil import parseTime
 try:
     from xgds_plot import meta, tile, profiles, staticPlot

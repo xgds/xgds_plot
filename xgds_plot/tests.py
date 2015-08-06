@@ -19,7 +19,7 @@ import collections
 from django.test import TestCase
 
 from xgds_plot.tile import getTileBounds, getTileContainingPoint, getTileContainingBounds
-from xgds_plot import settings
+from django.conf import settings
 
 
 class TileTest(TestCase):
