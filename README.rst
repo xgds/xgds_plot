@@ -1,4 +1,4 @@
-Fill me in
+xGDS module to support real-time and historical synchronized plotting of data.
 
 .. o __BEGIN_LICENSE__
 .. o  Copyright (c) 2015, United States Government, as represented by the
