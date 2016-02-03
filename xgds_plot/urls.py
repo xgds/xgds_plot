@@ -20,51 +20,50 @@ from django.conf.urls import url, patterns
 from django.core.urlresolvers import reverse_lazy
 
 from django.views.generic.base import RedirectView
+from xgds_plot import views
 
-urlpatterns = patterns(
-    'xgds_plot.views',
-
+urlpatterns = [
     url(r'^$',
         RedirectView.as_view(url=reverse_lazy('xgds_plot_plots'), permanent=False), {},
         name='xgds_plot_home'),
 
     url(r'^plots/$',
-        'plots', {},
+        views.plots, {},
         name='xgds_plot_plots'),
 
     url(r'^meta.json$',
-        'getMeta', {},
+        views.getMeta, {},
         name='xgds_plot_meta'),
 
     url(r'^now/$',
-        'now', {},
+        views.now, {},
         name='xgds_plot_now'),
 
     url(r'^mapIndex\.kml$',
-        'mapIndexKml', {'loginRequired': False},
+        views.mapIndexKml, {'loginRequired': False},
         'xgds_plot_mapIndexKml'),
 
     #url(r'^mapLayer_(?P<layerId>[^\.]+)\.kml$',
-    #    'mapKml', {'loginRequired': False},
+    #    views.mapKml, {'loginRequired': False},
     #    'xgds_plot_mapKml'),
 
     url(r'^mapTile/(?P<layerId>[^/]+)/(?P<dayCode>\d+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
-        'mapTileKml', {'loginRequired': False},
+        views.mapTileKml, {'loginRequired': False},
         'xgds_plot_mapTileKml'),
 
     url(r'^profile/(?P<layerId>[^\.]*)\.png$',
-        'profileRender', {},
+        views.profileRender, {},
         'xgds_plot_profileRender'),
 
     url(r'^profile/(?P<layerId>[^\.]*)\.csv$',
-        'profileCsv', {},
+        views.profileCsv, {},
         'xgds_plot_profileCsv'),
 
     url(r'^profiles/',
-        'profilesPage', {},
+        views.profilesPage, {},
         'xgds_plot_profiles'),
 
     url(r'staticPlot/(?P<seriesId>[^\.]+)\.png',
-        'getStaticPlot', {},
+        views.getStaticPlot, {},
         'xgds_plot_staticPlot'),
-)
+    ]
