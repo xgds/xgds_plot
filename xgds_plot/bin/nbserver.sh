@@ -49,8 +49,8 @@ echo _________________________________________________________ >> $NBSERVER_LOG_
 date >> $NBSERVER_LOG_FILE
 echo "starting new notebook session" >> $NBSERVER_LOG_FILE
 
-echo JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook --config=$JUPYTER_CONFIG_DIR/jupyter_notebook_config.py --no-browser >> $NBSERVER_LOG_FILE 2>&1
-JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook --config=$JUPYTER_CONFIG_DIR/jupyter_notebook_config.py --no-browser >> $NBSERVER_LOG_FILE 2>&1 &
+echo JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook >> $NBSERVER_LOG_FILE 2>&1
+JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook >> $NBSERVER_LOG_FILE 2>&1 &
 
 echo \$! > $NBSERVER_PID_FILE
 
