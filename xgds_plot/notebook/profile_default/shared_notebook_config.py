@@ -27,7 +27,7 @@ from django.conf import settings
 # pylint: disable=E0602
 
 c = get_config()
-c.NotebookManager.notebook_dir = settings.PROJ_ROOT + 'data/notebook/'
+c.NotebookApp.notebook_dir = settings.PROJ_ROOT + 'data/notebook/'
 c.IPKernelApp.pylab = 'inline'
 
 #c.NotebookApp.base_url = '/notebook/'

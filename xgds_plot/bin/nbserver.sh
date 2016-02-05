@@ -19,22 +19,30 @@
 # An example version of the nbserver script can be found in version
 # control in this directory.
 
+if [ -d /home/irg ]; then
+    EXEC_USER=irg
+else
+    EXEC_USER=vagrant
+fi
+
 THISDIR="$( cd "$( dirname "$0" )" && pwd )"
-PROJ_ROOT="$THISDIR/../../../.."
-IPYTHONDIR=$PROJ_ROOT/var/notebook
-NBSERVER_PID_FILE=$IPYTHONDIR/profile_default/pid/nbserver.pid
-NBSERVER_LOG_FILE=$IPYTHONDIR/profile_default/log/nbserver.log
+PROJ_ROOT=$(readlink -f "$THISDIR/../../../..")
+JUPYTER_CONFIG_DIR=$PROJ_ROOT/var/notebook
+NOTEBOOK_DIR=$PROJ_ROOT/data/notebook
+PROFILE_DIR=$JUPYTER_CONFIG_DIR/profile_default
+if [ ! -d $PROFILE_DIR/pid ]; then
+    mkdir -p $PROFILE_DIR/pid
+    mkdir -p $PROFILE_DIR/log
+fi
+NBSERVER_PID_FILE=$PROFILE_DIR/pid/nbserver.pid
+NBSERVER_LOG_FILE=$PROFILE_DIR/log/nbserver.log
 cd /
 
-sudo -u irg -H bash <<EOF
+sudo -u $EXEC_USER -H bash <<EOF
 
-source $PROJ_ROOT/sourceme.sh
-echo >> $NBSERVER_LOG_FILE
-echo >> $NBSERVER_LOG_FILE
-date >> $NBSERVER_LOG_FILE
-echo "starting new notebook session" >> $NBSERVER_LOG_FILE
-echo ipython notebook --ipython-dir=$IPYTHONDIR --no-browser >> $NBSERVER_LOG_FILE 2>&1
-nohup ipython notebook --ipython-dir=$IPYTHONDIR --no-browser >> $NBSERVER_LOG_FILE 2>&1 &
+echo JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook --config=$JUPYTER_CONFIG_DIR/jupyter_notebook_config.py --no-browser >> $NBSERVER_LOG_FILE 2>&1
+JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook --config=$JUPYTER_CONFIG_DIR/jupyter_notebook_config.py --no-browser >> $NBSERVER_LOG_FILE 2>&1 &
+
 echo \$! > $NBSERVER_PID_FILE
 
 EOF

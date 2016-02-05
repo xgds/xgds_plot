@@ -53,8 +53,9 @@ class Command(NoArgsCommand):
     def generateNotebookDir(self, builder, appDir):
         assert settings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
             'generateNotebookDir: very error-prone if not using symlinks'
+        notebookDir = os.path.join(appDir, 'notebook', 'profile_default')
         profileDir = os.path.join(appDir, 'notebook', 'profile_default')
-        siteConfig = os.path.join(profileDir, 'ipython_notebook_config.py')
+        siteConfig = os.path.join(notebookDir, 'jupyter_notebook_config.py')
 
         if not os.path.exists(profileDir):
             os.makedirs(profileDir)
@@ -62,7 +63,7 @@ class Command(NoArgsCommand):
         # generate initial ipython_notebook_config.py file if not already present
         if not os.path.exists(siteConfig):
             siteConfigTemplate = os.path.join(appDir, 'management', 'templates',
-                                              'ipython_notebook_config.py')
+                                              'jupyter_notebook_config.py')
             shutil.copyfile(siteConfigTemplate, siteConfig)
 
         # symlink the contents of the notebook directory under the <site>/var directory
