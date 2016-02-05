@@ -32,5 +32,6 @@ c.NotebookApp.notebook_dir = settings.PROJ_ROOT + 'data/notebook/'
 c.IPKernelApp.pylab = 'inline'
 
 c.NotebookApp.base_url = '/notebook'
+c.NotebookApp.webapp_settings = {'static_url_prefix': '/notebook/static/'}
 #c.NotebookApp.base_project_url = '/notebook/'
 #c.NotebookApp.base_kernel_url = '/notebook/'
