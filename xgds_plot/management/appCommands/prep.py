@@ -53,7 +53,7 @@ class Command(NoArgsCommand):
     def generateNotebookDir(self, builder, appDir):
         assert settings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
             'generateNotebookDir: very error-prone if not using symlinks'
-        notebookDir = os.path.join(appDir, 'notebook', 'profile_default')
+        notebookDir = os.path.join(appDir, 'notebook')
         profileDir = os.path.join(appDir, 'notebook', 'profile_default')
         siteConfig = os.path.join(notebookDir, 'jupyter_notebook_config.py')
 
