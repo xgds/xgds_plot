@@ -32,6 +32,8 @@ NOTEBOOK_DIR=$PROJ_ROOT/data/notebook
 PROFILE_DIR=$JUPYTER_CONFIG_DIR/profile_default
 if [ ! -d $PROFILE_DIR/pid ]; then
     mkdir -p $PROFILE_DIR/pid
+fi
+if [ ! -d $PROFILE_DIR/log ]; then
     mkdir -p $PROFILE_DIR/log
 fi
 NBSERVER_PID_FILE=$PROFILE_DIR/pid/nbserver.pid
@@ -39,6 +41,13 @@ NBSERVER_LOG_FILE=$PROFILE_DIR/log/nbserver.log
 cd /
 
 sudo -u $EXEC_USER -H bash <<EOF
+
+source $PROJ_ROOT/sourceme.sh
+echo >> $NBSERVER_LOG_FILE
+echo >> $NBSERVER_LOG_FILE
+echo _________________________________________________________ >> $NBSERVER_LOG_FILE
+date >> $NBSERVER_LOG_FILE
+echo "starting new notebook session" >> $NBSERVER_LOG_FILE
 
 echo JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook --config=$JUPYTER_CONFIG_DIR/jupyter_notebook_config.py --no-browser >> $NBSERVER_LOG_FILE 2>&1
 JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook --config=$JUPYTER_CONFIG_DIR/jupyter_notebook_config.py --no-browser >> $NBSERVER_LOG_FILE 2>&1 &
