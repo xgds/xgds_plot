@@ -16,10 +16,10 @@
 
 PROJ_ROOT=/usr/local/irg/releases/lakelander/xgds_lake_lander
 STARTCMD=${PROJ_ROOT}/submodules/xgds_plot/xgds_plot/bin/nbserver.sh
-DAEMON=ipython
-PROFILE_DIR=${PROJ_ROOT}/var/notebook/profile_default
-NBSERVER_PID_FILE=${PROFILE_DIR}/pid/nbserver.pid
-NBSERVER_LOG_FILE=${PROFILE_DIR}/log/nbserver.log
+DAEMON=jupyter-notebook
+JUPYTER_CONFIG_DIR=${PROJ_ROOT}/var/notebook/jupyter
+NBSERVER_PID_FILE=${JUPYTER_CONFIG_DIR}/pid/nbserver.pid
+NBSERVER_LOG_FILE=${JUPYTER_CONFIG_DIR}/log/nbserver.log
 
 test -x $STARTCMD || exit 0
 

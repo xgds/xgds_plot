@@ -25,7 +25,7 @@ This file must not be checked into version control!
 # pylint: disable=E0602
 
 # load shared settings from shared_notebook_config.py in this directory
-load_subconfig('shared_notebook_config.py')
+load_subconfig('shared_jupyter_notebook_config.py')
 
 ######################################################################
 # Add your modifications below this point

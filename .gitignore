@@ -8,6 +8,7 @@
 /static/js/*.r*.js
 /static/css/*.r*.css
 /xgds_plot/build
-/xgds_plot/notebook/jupyter_notebook_config.py
+/xgds_plot/notebook/jupyter/jupyter_notebook_config.py
+/xgds_plot/notebook/ipython/profile_default/ipython_config.py
 /xgds_plot/notebook/nbextensions/mathjax/
 migrations/

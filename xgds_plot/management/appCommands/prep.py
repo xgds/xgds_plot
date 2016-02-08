@@ -54,30 +54,41 @@ class Command(NoArgsCommand):
         assert settings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
             'generateNotebookDir: very error-prone if not using symlinks'
         notebookDir = os.path.join(appDir, 'notebook')
-        profileDir = os.path.join(appDir, 'notebook', 'profile_default')
-        siteConfig = os.path.join(notebookDir, 'jupyter_notebook_config.py')
 
-        if not os.path.exists(profileDir):
-            os.makedirs(profileDir)
+        jupyterDir = os.path.join(notebookDir, 'jupyter')
+        if not os.path.exists(jupyterDir):
+            os.makedirs(jupyterDir)
 
-        # generate initial ipython_notebook_config.py file if not already present
-        if not os.path.exists(siteConfig):
-            siteConfigTemplate = os.path.join(appDir, 'management', 'templates',
-                                              'jupyter_notebook_config.py')
-            shutil.copyfile(siteConfigTemplate, siteConfig)
+        ipythonDir = os.path.join(notebookDir, 'ipython')
+        ipythonProfileDir = os.path.join(ipythonDir, 'profile_default')
+        if not os.path.exists(ipythonProfileDir):
+            os.makedirs(ipythonProfileDir)
+
+        # generate initial non-shared config files if not already present
+        jupyterConfig = os.path.join(jupyterDir, 'jupyter_notebook_config.py')
+        if not os.path.exists(jupyterConfig):
+            jupyterConfigTemplate = os.path.join(appDir, 'management', 'templates',
+                                                 'jupyter_notebook_config.py')
+            shutil.copyfile(jupyterConfigTemplate, jupyterConfig)
+        ipythonConfig = os.path.join(ipythonProfileDir, 'ipython_config.py')
+        if not os.path.exists(ipythonConfig):
+            ipythonConfigTemplate = os.path.join(appDir, 'management', 'templates',
+                                                 'ipython_config.py')
+            shutil.copyfile(ipythonConfigTemplate, ipythonConfig)
 
         # symlink the contents of the notebook directory under the <site>/var directory
         installer = Installer(builder)
-        installProfileDir = os.path.join(settings.VAR_ROOT, 'notebook', 'profile_default')
-        installer.installRecurse(profileDir, installProfileDir)
-        installer.installRecurse(os.path.join(appDir, 'notebook', 'nbextensions'),
-                                 os.path.join(settings.VAR_ROOT, 'notebook', 'nbextensions'))
+        varNotebookDir = os.path.join(settings.VAR_ROOT, 'notebook')
+        installer.installRecurse(notebookDir, varNotebookDir)
 
+        # make the directory to hold notebook files, if it doesn't already exist
         dataDir = os.path.join(settings.DATA_ROOT, 'notebook')
         if not os.path.exists(dataDir):
             os.makedirs(dataDir)
 
-        # symlink extra startup files
-        startupDir = os.path.join(installProfileDir, 'startup')
+        # symlink extra startup files (these files will be site-specific, not part of
+        # the xgds_plot app)
+        startupDir = os.path.join(varNotebookDir, 'ipython', 'profile_default',
+                                  'startup')
         for f in settings.XGDS_PLOT_NOTEBOOK_STARTUP_FILES:
             installer.installFile(f, startupDir)

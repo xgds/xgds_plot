@@ -27,17 +27,22 @@ fi
 
 THISDIR="$( cd "$( dirname "$0" )" && pwd )"
 PROJ_ROOT=$(readlink -f "$THISDIR/../../../..")
-JUPYTER_CONFIG_DIR=$PROJ_ROOT/var/notebook
-NOTEBOOK_DIR=$PROJ_ROOT/data/notebook
-PROFILE_DIR=$JUPYTER_CONFIG_DIR/profile_default
-if [ ! -d $PROFILE_DIR/pid ]; then
-    mkdir -p $PROFILE_DIR/pid
+NOTEBOOK_CONFIG_DIR=$PROJ_ROOT/var/notebook
+JUPYTER_CONFIG_DIR=$NOTEBOOK_CONFIG_DIR/jupyter
+IPYTHONDIR=$NOTEBOOK_CONFIG_DIR/ipython
+
+PID_DIR=$JUPYTER_CONFIG_DIR/pid
+if [ ! -d $PID_DIR ]; then
+    mkdir -p $PID_DIR
 fi
-if [ ! -d $PROFILE_DIR/log ]; then
-    mkdir -p $PROFILE_DIR/log
+NBSERVER_PID_FILE=$PID_DIR/nbserver.pid
+
+LOG_DIR=$JUPYTER_CONFIG_DIR/log
+if [ ! -d $LOG_DIR ]; then
+    mkdir -p $LOG_DIR
 fi
-NBSERVER_PID_FILE=$PROFILE_DIR/pid/nbserver.pid
-NBSERVER_LOG_FILE=$PROFILE_DIR/log/nbserver.log
+NBSERVER_LOG_FILE=$LOG_DIR/nbserver.log
+
 cd /
 
 sudo -u $EXEC_USER -H bash <<EOF
@@ -49,8 +54,8 @@ echo _________________________________________________________ >> $NBSERVER_LOG_
 date >> $NBSERVER_LOG_FILE
 echo "starting new notebook session" >> $NBSERVER_LOG_FILE
 
-echo JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook >> $NBSERVER_LOG_FILE 2>&1
-JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook >> $NBSERVER_LOG_FILE 2>&1 &
+echo IPYTHONDIR=$IPYTHONDIR JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook >> $NBSERVER_LOG_FILE
+IPYTHONDIR=$IPYTHONDIR JUPYTER_CONFIG_DIR=$JUPYTER_CONFIG_DIR nohup jupyter notebook >> $NBSERVER_LOG_FILE 2>&1 &
 
 echo \$! > $NBSERVER_PID_FILE
 

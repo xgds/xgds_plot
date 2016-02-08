@@ -15,23 +15,20 @@
 #__END_LICENSE__
 
 """
-Version-controlled shared config for IPython Notebook.
+ipython_config.py is a place for you to put deployment-specific
+custom settings for IPython kernels. These custom settings will not
+be shared with other deployments. Settings made here override the shared
+settings specified in shared_ipython_config.py.
 
-Shared settings specified here are normally imported in the
-non-version-controlled file ipython_notebook_config.py where you can
-override settings on a site-specific basis.
+This file must not be checked into version control!
+
+More info at http://ipython.readthedocs.org/en/stable/config/intro.html
 """
-
-from django.conf import settings
 
 # pylint: disable=E0602
 
-c = get_config()
-c.NotebookApp.open_browser = False
-c.NotebookApp.notebook_dir = settings.PROJ_ROOT + 'data/notebook/'
-c.IPKernelApp.pylab = 'inline'
+# load shared settings from shared_ipython_config.py in this directory
+load_subconfig('shared_ipython_config.py')
 
-c.NotebookApp.base_url = '/notebook'
-c.NotebookApp.webapp_settings = {'static_url_prefix': '/notebook/static/'}
-#c.NotebookApp.base_project_url = '/notebook/'
-#c.NotebookApp.base_kernel_url = '/notebook/'
+######################################################################
+# Add your modifications below this point
