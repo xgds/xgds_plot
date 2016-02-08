@@ -20,7 +20,7 @@ import copy
 import numpy as np
 import pandas as pd
 import pandas.io.sql as psql
-import MySQLdb
+import sqlalchemy
 from django.conf import settings
 try:
     from matplotlib import pyplot as plt
@@ -30,11 +30,6 @@ except ImportError:
 # pylint: disable=R0924,W0108,E1101
 
 _djangoDbSettings = settings.DATABASES['default']
-DB_SETTINGS = dict(host=_djangoDbSettings['HOST'],
-                   port=int(_djangoDbSettings['PORT']),
-                   user=_djangoDbSettings['USER'],
-                   passwd=_djangoDbSettings['PASSWORD'],
-                   db=_djangoDbSettings['NAME'])
 dbConnectionG = None
 
 
@@ -44,7 +39,11 @@ def getDbConnection():
     """
     global dbConnectionG
     if not dbConnectionG:
-        dbConnectionG = MySQLdb.connect(**DB_SETTINGS)
+        djangoDb = settings.DATABASES['default']
+        engine = (sqlalchemy.create_engine
+                  ('mysql://{USER}:{PASSWORD}@{HOST}:{PORT}/{NAME}'
+                   .format(**djangoDb)))
+        dbConnectionG = engine.connect()
     return dbConnectionG
 
 
@@ -64,6 +63,16 @@ def closeDbConnection():
             logging.warning('pandasUtil.closeDbConnection: unable to close dbConnectionG %s', dbConnectionG)
             logging.warning('pandasUtil.closeDbConnection: will dereference current connection and use a new one')
         dbConnectionG = None
+
+
+def q(query, **kwargs):
+    """
+    Handy abbreviation q() = psql.read_sql(), and supplies a useful
+    default argument for the 'con' kwarg.
+    """
+    if 'con' not in kwargs:
+        kwargs['con'] = getDbConnection()
+    return psql.read_sql(query, **kwargs)
 
 
 def quoteIfString(obj):
@@ -99,9 +108,6 @@ class AbstractFrameSource(object):
     or getRecord() to get a frame expected to contain a single record
     and extract that record.
 
-    Much like Django QuerySet, we do some caching. If you want the same
-    AbstractFrameSource but with an empty cache, call source.copy().
-
     The postProcess() method is designed to enable model-specific
     post-processing in derived classes. (Applied after the data is
     received from the database and before returning the XgdsFrame.)
@@ -112,7 +118,6 @@ class AbstractFrameSource(object):
         self.parent = parent
         self.model = model
         self.qset = None
-        self.cache = {}
 
     def copy(self):
         result = type(self)(self.model, self.parent)
@@ -121,7 +126,6 @@ class AbstractFrameSource(object):
 
     def reset(self):
         self.qset = None
-        self.cache = {}
 
     def _getQset(self):
         if self.qset is None:
@@ -148,12 +152,9 @@ class AbstractFrameSource(object):
     def __getitem__(self, k):
         return self._replaceQset(self._getQset()[k])
 
-    def getDataWithCache(self, sql):
-        result = self.cache.get(sql)
-        if result is None:
-            result = psql.frame_query(sql, con=getDbConnection())
-            result = self.postProcess(result)
-            self.cache[sql] = result
+    def getData(self, sql):
+        result = psql.read_sql(sql, con=getDbConnection())
+        result = self.postProcess(result)
         return result
 
     def getFrame(self, *args, **kwargs):
@@ -163,7 +164,7 @@ class AbstractFrameSource(object):
             filtered = self
         sql = filtered.getSql()
         logging.debug('getFrame: %s', sql)
-        return self.getDataWithCache(sql)
+        return self.getData(sql)
 
     def filterTime(self, start=None, end=None):
         timestampField = 'timestamp'  # FIX: don't hard code
