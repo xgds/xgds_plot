@@ -16,7 +16,7 @@
 
 # pylint: disable=E1120
 
-from django.conf.urls import url, patterns
+from django.conf.urls import url
 from django.core.urlresolvers import reverse_lazy
 
 from django.views.generic.base import RedirectView
