@@ -37,7 +37,7 @@ def dosys(cmd):
 class Command(BaseCommand):
     help = 'Prep isruApp'
 
-    def handle_noargs(self, **options):
+    def handle(self, *args, **options):
         if 'IPYTHONDIR' not in os.environ:
             os.environ['IPYTHONDIR'] = settings.VAR_ROOT + 'notebook/'
         dosys('ipython notebook --no-browser')

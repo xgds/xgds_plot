@@ -42,7 +42,7 @@ from django.conf import settings
 class Command(BaseCommand):
     help = 'Prep xgds_plot'
 
-    def handle_noargs(self, **options):
+    def handle(self, *args, **options):
         _d = os.path.dirname
         appDir = _d(_d(_d(os.path.abspath(__file__))))
 
