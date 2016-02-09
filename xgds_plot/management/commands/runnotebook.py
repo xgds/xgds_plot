@@ -21,7 +21,7 @@ Runs the IPython Notebook with settings linked to this xGDS installation.
 import os
 import logging
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 
 from django.conf import settings
 
@@ -34,7 +34,7 @@ def dosys(cmd):
     return ret
 
 
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     help = 'Prep isruApp'
 
     def handle_noargs(self, **options):

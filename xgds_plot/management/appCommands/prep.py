@@ -31,7 +31,7 @@ management/appCommands/prep.py command for each app (if it exists).
 import os
 import shutil
 
-from django.core.management.base import NoArgsCommand
+from django.core.management.base import BaseCommand
 
 from geocamUtil.Builder import Builder
 from geocamUtil.Installer import Installer
@@ -39,7 +39,7 @@ from geocamUtil.Installer import Installer
 from django.conf import settings
 
 
-class Command(NoArgsCommand):
+class Command(BaseCommand):
     help = 'Prep xgds_plot'
 
     def handle_noargs(self, **options):
