@@ -87,6 +87,20 @@ def setupTimeSeries():
 
     return metaList
 
-TIME_SERIES = setupTimeSeries()
-TIME_SERIES_LOOKUP = dict([(_m['valueCode'], _m)
-                           for _m in TIME_SERIES])
+def getTimeSeries():
+    try:
+        if TIME_SERIES:
+            return TIME_SERIES
+    except:
+        TIME_SERIES = setupTimeSeries()
+        return TIME_SERIES
+
+
+def getTimeSeriesLookup():
+    try:
+        if TIME_SERIES_LOOKUP:
+            return TIME_SERIES_LOOKUP
+    except:
+        TIME_SERIES_LOOKUP = dict([(_m['valueCode'], _m)
+                                   for _m in getTimeSeries()])
+        return TIME_SERIES_LOOKUP

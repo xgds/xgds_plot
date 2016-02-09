@@ -72,7 +72,7 @@ def dumps(obj):
 
 
 def getMeta(request):
-    return HttpResponse(dumps(meta.TIME_SERIES),
+    return HttpResponse(dumps(meta.getTimeSeries()),
                         content_type='application/json')
 
 
@@ -95,7 +95,7 @@ def plots(request):
 
         # sanity check
         for name in timeSeriesNames:
-            if name not in meta.TIME_SERIES_LOOKUP:
+            if name not in meta.getTimeSeriesLookup():
                 return HttpResponseBadRequest('unknown time series %s' % name)
 
     exportFields = ('DATA_URL',
@@ -176,7 +176,7 @@ def writeMapIndexKmlForDay(request, out, day, isToday):
 <Folder>
   <name>%(dateStr)s</name>
 """ % dict(dateStr=dateStr))
-    for layerOpts in meta.TIME_SERIES:
+    for layerOpts in meta.getTimeSeries():
         if 'map' in layerOpts:
             writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts)
     out.write("</Folder>")
@@ -294,7 +294,7 @@ def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
 
 
 # def mapKml(request, layerId):
-#     layerOpts = meta.TIME_SERIES_LOOKUP[layerId]
+#     layerOpts = meta.getTimeSeriesLookup()[layerId]
 #     legendUrl = request.build_absolute_uri('%s/%s/colorbar.png'
 #                                            % (MAP_DATA_PATH,
 #                                               layerId))
@@ -512,7 +512,7 @@ def profilesPage(request):
 
 
 def getStaticPlot(request, seriesId):
-    if seriesId not in meta.TIME_SERIES_LOOKUP:
+    if seriesId not in meta.getTimeSeriesLookup():
         return HttpResponseNotFound('<h1>404 No time series named "%s"</h1>' % seriesId)
 
     offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
