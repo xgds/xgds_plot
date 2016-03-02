@@ -18,6 +18,7 @@ import os
 import shutil
 import sys
 import datetime
+import pytz
 import re
 
 from geocamUtil import anyjson as json
@@ -92,7 +93,7 @@ def parseTime(timeString, offset=None):
         offset = datetime.timedelta(hours=settings.XGDS_PLOT_TIME_OFFSET_HOURS)
 
     # exact match 'now'
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(pytz.utc)
     if timeString == 'now':
         return now
 

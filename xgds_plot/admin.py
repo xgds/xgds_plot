@@ -15,6 +15,7 @@
 #__END_LICENSE__
 
 import datetime
+import pytz
 
 from django.contrib import admin
 
@@ -30,7 +31,7 @@ class TimeSeriesAdmin(admin.ModelAdmin):
             obj.pk = None
             obj.version += 1
         if form.cleaned_data['startIndexingAtCurrentTime']:
-            obj.startTime = datetime.datetime.utcnow()
+            obj.startTime = datetime.datetime.now(pytz.utc)
         obj.save()
 
 

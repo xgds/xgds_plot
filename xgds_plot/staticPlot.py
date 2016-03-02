@@ -16,6 +16,8 @@
 #__END_LICENSE__
 
 import datetime
+import pytz
+
 import logging
 import multiprocessing
 try:
@@ -161,7 +163,7 @@ def getPlotDataMultiprocessing(seriesId,
 
 
 def testStaticPlot():
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(pytz.utc)
     ago = now - datetime.timedelta(days=3)
 
     for f in ('airPressure', 'relativeHumidity'):

@@ -142,7 +142,7 @@ def writeMapIndexKml(request, out):
     getDatesFn = getClassByName(settings.XGDS_PLOT_GET_DATES_FUNCTION)
     dates = list(reversed(sorted(getDatesFn())))
 
-    nowTime = utcToTz(datetime.datetime.utcnow())
+    nowTime = utcToTz(datetime.datetime.now(pytz.utc))
     today = nowTime.date()
 
     if len(dates) >= 4 and dates[0] == today:
@@ -269,7 +269,7 @@ def writeMapIndexKmlForDayAndLayer(request, out, day, layerOpts):
 #     queryManager = queryClass(layerOpts)
 #     dates = list(reversed(sorted(queryManager.getDatesWithData())))
 
-#     nowTime = utcToTz(datetime.datetime.utcnow())
+#     nowTime = utcToTz(datetime.datetime.now(pytz.utc))
 #     today = nowTime.date()
 
 #     if len(dates) >= 4 and dates[0] == today:

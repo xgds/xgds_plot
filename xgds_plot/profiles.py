@@ -17,6 +17,7 @@
 
 import os
 import datetime
+import pytz
 import logging
 import multiprocessing
 try:
@@ -455,7 +456,7 @@ def getProfileContourPlotImageDataMultiprocessing(layerId,
 
 
 def testProfiles():
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(pytz.utc)
     ago = now - datetime.timedelta(days=3)
 
     #s = getProfileContourPlotImageDataMultiprocessing('waterTemperature',
