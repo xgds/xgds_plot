@@ -16,6 +16,8 @@
 
 # pylint: disable=W0105
 
+from geocamUtil.SettingsUtil import getOrCreateArray
+
 XGDS_ZMQ_WEB_SOCKET_URL = 'ws://{{host}}:8001/zmq/'
 
 # include trailing slash but no leading slash
@@ -151,6 +153,5 @@ XGDS_PLOT_NOTEBOOK_STARTUP_FILES = []
 
 XGDS_PLOT_GET_DATES_FUNCTION = 'geocamTrack.trackUtil.getDatesWithPositionData'
 
-# include this in your siteSettings.py BOWER_INSTALLED_APPS
-XGDS_PLOT_BOWER_INSTALLED_APPS = ('flot',
-                                  )
+BOWER_INSTALLED_APPS = getOrCreateArray('BOWER_INSTALLED_APPS')
+BOWER_INSTALLED_APPS += ['flot']
