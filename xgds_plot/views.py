@@ -24,7 +24,7 @@ import logging
 import re
 import pytz
 
-from django.shortcuts import render_to_response
+from django.shortcuts import render
 from django.http import (HttpResponse,
                          HttpResponseNotFound,
                          HttpResponseBadRequest)
@@ -120,10 +120,11 @@ def plots(request):
         exportSettings['XGDS_ZMQ_WEB_SOCKET_URL'] = re.sub(r'^ws:', 'wss:',
                                                            exportSettings['XGDS_ZMQ_WEB_SOCKET_URL'])
 
-    return render_to_response('xgds_plot/plots.html',
-                              {'settings': dumps(exportSettings),
-                               'requestParams': dumps(requestParams)},
-                              context_instance=RequestContext(request))
+    return render(request,
+                  'xgds_plot/plots.html',
+                  {'settings': dumps(exportSettings),
+                   'requestParams': dumps(requestParams)},
+                  )
 
 
 def mapIndexKml(request):
@@ -500,15 +501,16 @@ def profilesPage(request):
     assert minTime <= maxTime, 'HTTP GET parameters: start, end: start time must be before end time'
     showSamplePoints = int(request.GET.get('pts', '1'))
     assert showSamplePoints in (0, 1), 'HTTP GET parameters: pts: specify either 0 or 1'
-    return render_to_response('xgds_plot/profiles.html',
-                              {'minTime': javaStyle(minTime),
-                               'maxTime': javaStyle(maxTime),
-                               'showSamplePoints': showSamplePoints,
-                               'minDisplayTime': shortTime(minTime + offset),
-                               'maxDisplayTime': shortTime(maxTime + offset),
-                               'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,
-                               'profiles': profiles.PROFILES},
-                              context_instance=RequestContext(request))
+    return render(request,
+                  'xgds_plot/profiles.html',
+                  {'minTime': javaStyle(minTime),
+                   'maxTime': javaStyle(maxTime),
+                   'showSamplePoints': showSamplePoints,
+                   'minDisplayTime': shortTime(minTime + offset),
+                   'maxDisplayTime': shortTime(maxTime + offset),
+                   'displayTimeZone': settings.XGDS_PLOT_TIME_ZONE_NAME,
+                   'profiles': profiles.PROFILES},
+                  )
 
 
 def getStaticPlot(request, seriesId):
