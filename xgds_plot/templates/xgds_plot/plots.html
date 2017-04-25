@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load nav %}
+{% load static %}
 {% block siteSection %}Plots{% endblock %}
 
 {% block cssExtras %}
@@ -76,8 +77,8 @@
   <script language="javascript" type="text/javascript" src="{{ EXTERNAL_URL }}flot/jquery.flot.navigate.js"></script>
   <script language="javascript" type="text/javascript" src="{{ EXTERNAL_URL }}flot/jquery.flot.symbol.js"></script>
   <script language="javascript" type="text/javascript" src="{{ EXTERNAL_URL }}flot/jquery.flot.threshold.min.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}geocamUtil/js/zmq.js"></script>
-  <script language="javascript" type="text/javascript" src="{{ STATIC_URL }}xgds_plot/js/xgds_plot.js"></script>
+  <script language="javascript" type="text/javascript" src="{% static 'geocamUtil/js/zmq.js' %}"></script>
+  <script language="javascript" type="text/javascript" src="{% static 'xgds_plot/js/xgds_plot.js' %}"></script>
 {% endblock %}
 
 {% block jsSetVars %}
