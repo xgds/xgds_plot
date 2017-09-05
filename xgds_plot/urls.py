@@ -40,15 +40,15 @@ urlpatterns = [
         name='xgds_plot_now'),
 
     url(r'^mapIndex\.kml$',
-        views.mapIndexKml, {'loginRequired': False},
+        views.mapIndexKml, {},
         'xgds_plot_mapIndexKml'),
 
     #url(r'^mapLayer_(?P<layerId>[^\.]+)\.kml$',
-    #    views.mapKml, {'loginRequired': False},
+    #    views.mapKml, {},
     #    'xgds_plot_mapKml'),
 
     url(r'^mapTile/(?P<layerId>[^/]+)/(?P<dayCode>\d+)/(?P<level>\d+)/(?P<x>\d+)/(?P<y>\d+)\.kml$',
-        views.mapTileKml, {'loginRequired': False},
+        views.mapTileKml, {},
         'xgds_plot_mapTileKml'),
 
     url(r'^profile/(?P<layerId>[^\.]*)\.png$',
