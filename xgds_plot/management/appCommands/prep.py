@@ -43,12 +43,14 @@ class Command(BaseCommand):
     help = 'Prep xgds_plot'
 
     def handle(self, *args, **options):
-        _d = os.path.dirname
-        appDir = _d(_d(_d(os.path.abspath(__file__))))
+        if False:
+            # TODO right now this throws the error from GEOCAM_UTIL_INSTALLER_USE_SYMLINKS being false
+            _d = os.path.dirname
+            appDir = _d(_d(_d(os.path.abspath(__file__))))
 
-        b = Builder()
-        self.generateNotebookDir(b, appDir)
-        b.finish()
+            b = Builder()
+            self.generateNotebookDir(b, appDir)
+            b.finish()
 
     def generateNotebookDir(self, builder, appDir):
         assert settings.GEOCAM_UTIL_INSTALLER_USE_SYMLINKS, \
