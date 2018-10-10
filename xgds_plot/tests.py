@@ -16,13 +16,13 @@
 
 import collections
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from xgds_plot.tile import getTileBounds, getTileContainingPoint, getTileContainingBounds
 from django.conf import settings
 
 
-class TileTest(TestCase):
+class TileTest(TransactionTestCase):
     def assertNearlyEqual(self, a, b, msg=None, delta=settings.XGDS_PLOT_MAP_TILE_EPS):
         if isinstance(a, collections.Iterable):
             for ai, bi in zip(a, b):
